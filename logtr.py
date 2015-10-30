@@ -1,14 +1,6 @@
 import numpy
 
-def hat3(v):
-    return numpy.matrix([[0,-v[2],v[1]],
-                         [v[2],0,-v[0]],
-                         [-v[1],v[0],0]])
-def hat6(v):
-    return numpy.matrix([0,-v[5],v[4],v[0]],
-                        [v(5),0,-v[3],v[1]],
-                        [-v[4],v[3],0,v[2]],
-                        [0,0,0,0])
+import util
 
 def logtr(g):
     R = g[0:3,0:3]
@@ -24,9 +16,9 @@ def logtr(g):
         w(1) = 1/2/numpy.sin(theta)*(R[0,2]-R[2,0])
         w(2) = 1/2/numpy.sin(theta)*(R[1,0]-R[0,1])
 
-        A = (numpy.identity(3)-R)*hat3(w)+w*w.T*theta
+        A = (numpy.identity(3)-R)*util.hat3(w)+w*w.T*theta
         v = numpy.linalg.solve(A,p)
         w = w*theta
         v = v*theta
-    
-    return hat6(numpy.vstack(v,w))
+
+    return util.hat6(numpy.vstack(v,w))
