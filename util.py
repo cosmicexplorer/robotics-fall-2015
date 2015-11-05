@@ -23,8 +23,9 @@ def hat6(v):
                         [-v[4],v[3],0,v[2]],
                         [0,0,0,0])
 def wedge3(vhat):
-    return numpy.array([vhat[2,1],vhat[0,2],vhat[1,0])
+    return numpy.array([vhat[2,1],vhat[0,2],vhat[1,0]])
 
 def wedge6(vhat):
-    return numpy.array([vhat[0,3],vhat[1,3],vhat[2,3],vhat[2,1],vhat[0,2],vhat[1,0]]
-    
+    return numpy.array(
+        [vhat[0,3], vhat[1,3], vhat[2,3],
+         vhat[2,1], vhat[0,2], vhat[1,0]])
