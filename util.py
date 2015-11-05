@@ -19,6 +19,12 @@ def hat3(v):
                          [-v[1],v[0],0]])
 def hat6(v):
     return numpy.matrix([0,-v[5],v[4],v[0]],
-                        [v(5),0,-v[3],v[1]],
+                        [v[5],0,-v[3],v[1]],
                         [-v[4],v[3],0,v[2]],
                         [0,0,0,0])
+def wedge3(vhat):
+    return numpy.array([vhat[2,1],vhat[0,2],vhat[1,0])
+
+def wedge6(vhat):
+    return numpy.array([vhat[0,3],vhat[1,3],vhat[2,3],vhat[2,1],vhat[0,2],vhat[1,0]]
+    
