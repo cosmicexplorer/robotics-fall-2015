@@ -1,5 +1,4 @@
 import numpy
-import baxter
 
 def makeTransformMat(rot, pt):
     ret = numpy.zeros((4, 4))
@@ -31,4 +30,7 @@ def wedge6(vhat):
         [vhat[0,3], vhat[1,3], vhat[2,3],
          vhat[2,1], vhat[0,2], vhat[1,0]])
 
-def resolvedRates(q,
+# J is a function returning a jacobian matrix given q
+# T is a function returning a transformation from the base frame given q
+def resolvedRates(q, J, T):
+    
