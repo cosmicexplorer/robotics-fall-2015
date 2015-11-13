@@ -1,0 +1,2 @@
+def J(q):
+    return

@@ -1,4 +1,5 @@
 import numpy
+import baxter
 
 def makeTransformMat(rot, pt):
     ret = numpy.zeros((4, 4))
@@ -29,3 +30,5 @@ def wedge6(vhat):
     return numpy.array(
         [vhat[0,3], vhat[1,3], vhat[2,3],
          vhat[2,1], vhat[0,2], vhat[1,0]])
+
+def resolvedRates(q,
