@@ -34,10 +34,12 @@ def wedge6(vhat):
 # J is the jacobian matrix (6 x n)
 # T is a transformation from the base frame representing current pos/ori (6 x n)
 # target is a transformation from the base frame (pos/ori) (6 x n)
-def resolvedRates(J, T, target):
+def resolvedRates(J, T, target, speed):
+    pos = numpy.matrix([]);
+    
     # need to calc trajectory; straight line? how to avoid singularities?
     # how to later add in collision detection?
-    return 3
+    return qdot
 
 def quat2Rot(qx,qy,qz,qw):
     return numpy.matrix([1-2*(qy**2)-2*(qz**2), 2*qx*qy-2*qz*qw, 2*qx*qz+2*qy*qw],
@@ -47,5 +49,27 @@ def quat2Rot(qx,qy,qz,qw):
 def transformation(R,p):
     T = numpy.c_[R, p]
     return T = numpy.r_[T,[[0, 0, 0, 1]]]
-    
-	
+
+def dcm2angle(C, output_unit='rad', rotation_sequence='ZYX'):
+    # From navpy outputs x,y,z angles
+    if(C.shape[0] != C.shape[1]):
+        raise ValueError('Matrix is not square')
+    if(C.shape[0] != 3):
+        raise ValueError('Matrix is not 3x3')
+
+    if(rotation_sequence == 'ZYX'):
+        rotAngle1 = np.arctan2(C[0, 1], C[0, 0])   # Yaw
+        rotAngle2 = -np.arcsin(C[0, 2])  # Pitch
+        rotAngle3 = np.arctan2(C[1, 2], C[2, 2])  # Roll
+
+    else:
+        raise NotImplementedError('Rotation sequences other than ZYX are not currently implemented')
+
+    if(output_unit == 'deg'):
+        rotAngle1 = np.rad2deg(rotAngle1)
+        rotAngle2 = np.rad2deg(rotAngle2)
+        rotAngle3 = np.rad2deg(rotAngle3)
+
+    return rotAngle3, rotAngle2, rotAngle1
+
+
