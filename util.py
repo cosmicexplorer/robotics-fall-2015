@@ -37,3 +37,15 @@ def wedge6(vhat):
 def resolvedRates(J, T, target):
     # need to calc trajectory; straight line? how to avoid singularities?
     # how to later add in collision detection?
+    return 3
+
+def quat2Rot(qx,qy,qz,qw):
+    return numpy.matrix([1-2*(qy**2)-2*(qz**2), 2*qx*qy-2*qz*qw, 2*qx*qz+2*qy*qw],
+            [2*qx*qy+2*qz*qw, 1-2*qx2-2*(qz**2), 2*qy*qz-2*qx*qw],
+            [2*qx*qz-2*qy*qw, 2*qy*qz+2*qx*qw, 1-2*(qx**2)-2*(qy**2)])
+
+def transformation(R,p):
+    T = numpy.c_[R, p]
+    return T = numpy.r_[T,[[0, 0, 0, 1]]]
+    
+	
