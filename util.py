@@ -30,7 +30,10 @@ def wedge6(vhat):
         [vhat[0,3], vhat[1,3], vhat[2,3],
          vhat[2,1], vhat[0,2], vhat[1,0]])
 
-# J is a function returning a jacobian matrix given q
-# T is a function returning a transformation from the base frame given q
-def resolvedRates(q, J, T):
-    
+# n in the below comments is the number of joints
+# J is the jacobian matrix (6 x n)
+# T is a transformation from the base frame representing current pos/ori (6 x n)
+# target is a transformation from the base frame (pos/ori) (6 x n)
+def resolvedRates(J, T, target):
+    # need to calc trajectory; straight line? how to avoid singularities?
+    # how to later add in collision detection?
