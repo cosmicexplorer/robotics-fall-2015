@@ -1,4 +1,5 @@
 import numpy
+import numpy.linalg
 
 def makeTransformMat(rot, pt):
     ret = numpy.zeros((4, 4))
@@ -31,14 +32,17 @@ def wedge6(vhat):
          vhat[2,1], vhat[0,2], vhat[1,0]])
 
 # n in the below comments is the number of joints
-# J is the jacobian matrix (6 x n)
+# J is the hubrid jocabian matrix (6 x n)
 # T is a transformation from the base frame representing current pos/ori (6 x n)
+# aka transform from base to end effector
 # target is a transformation from the base frame (pos/ori) (6 x n)
 def resolvedRates(J, T, target, speed):
-    pos = numpy.matrix([]);
-    
-    # need to calc trajectory; straight line? how to avoid singularities?
-    # how to later add in collision detection?
+    linDistance = numpy.matrix(target[0:3,3]-T[0:3,3])
+    angDistance = numpy.matrix(dcm2angle(target[0:3,0:3])-dcm2angle(T[0:3,0:3]))
+    linVelocity = speed[0]*(linDistance/numpy.linalg.norm(linDistance))
+    angVelocity = speed[1]*(angDistance/numpy.linalg.norm(angDistance))
+    velocity = numpy.r_[linVelocity,angVelocity] # 6 x 1 in the hubrid frem!!
+    qdot = numpy.linalg.pinv(J)*velocity
     return qdot
 
 def quat2Rot(qx,qy,qz,qw):
@@ -70,6 +74,6 @@ def dcm2angle(C, output_unit='rad', rotation_sequence='ZYX'):
         rotAngle2 = np.rad2deg(rotAngle2)
         rotAngle3 = np.rad2deg(rotAngle3)
 
-    return rotAngle3, rotAngle2, rotAngle1
+    return numpy.matrix([[rotAngle3], [rotAngle2], [rotAngle1]])
 
 
