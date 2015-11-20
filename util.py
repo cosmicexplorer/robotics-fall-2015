@@ -37,22 +37,25 @@ def wedge6(vhat):
 # aka transform from base to end effector
 # target is a transformation from the base frame (pos/ori) (6 x n)
 def resolvedRates(J, T, target, speed):
-    linDistance = numpy.matrix(target[0:3,3]-T[0:3,3])
-    angDistance = numpy.matrix(dcm2angle(target[0:3,0:3])-dcm2angle(T[0:3,0:3]))
+    # FIXME: currently ignoring all angular stuff
+    linDistance = numpy.matrix(target[0:3,0]-T[0:3,3])
+    # angDistance = numpy.matrix(target[3:,0]-dcm2angle(T[0:3,0:3]))
     linVelocity = speed[0]*(linDistance/numpy.linalg.norm(linDistance))
-    angVelocity = speed[1]*(angDistance/numpy.linalg.norm(angDistance))
-    velocity = numpy.r_[linVelocity,angVelocity] # 6 x 1 in the hubrid frem!!
+    # angVelocity = speed[1]*(angDistance/numpy.linalg.norm(angDistance))
+    # velocity = numpy.r_[linVelocity,angVelocity] # 6 x 1 in the hubrid frem!!
+    velocity = numpy.r_[linVelocity, numpy.matrix([[0],[0],[0]])]
     qdot = numpy.linalg.pinv(J)*velocity
     return qdot
 
-def quat2Rot(qx,qy,qz,qw):
-    return numpy.matrix([1-2*(qy**2)-2*(qz**2), 2*qx*qy-2*qz*qw, 2*qx*qz+2*qy*qw],
-            [2*qx*qy+2*qz*qw, 1-2*qx2-2*(qz**2), 2*qy*qz-2*qx*qw],
-            [2*qx*qz-2*qy*qw, 2*qy*qz+2*qx*qw, 1-2*(qx**2)-2*(qy**2)])
+def quat2rot(qx,qy,qz,qw):
+    return numpy.matrix(
+        [[1-2*(qy**2)-2*(qz**2), 2*qx*qy-2*qz*qw, 2*qx*qz+2*qy*qw],
+        [2*qx*qy+2*qz*qw, 1-2*(qx**2)-2*(qz**2), 2*qy*qz-2*qx*qw],
+        [2*qx*qz-2*qy*qw, 2*qy*qz+2*qx*qw, 1-2*(qx**2)-2*(qy**2)]])
 
 def transformation(R,p):
     T = numpy.c_[R, p]
-    return T = numpy.r_[T,[[0, 0, 0, 1]]]
+    return numpy.r_[T,[[0, 0, 0, 1]]]
 
 def dcm2angle(C, output_unit='rad', rotation_sequence='ZYX'):
     # From navpy outputs x,y,z angles
@@ -62,18 +65,16 @@ def dcm2angle(C, output_unit='rad', rotation_sequence='ZYX'):
         raise ValueError('Matrix is not 3x3')
 
     if(rotation_sequence == 'ZYX'):
-        rotAngle1 = np.arctan2(C[0, 1], C[0, 0])   # Yaw
-        rotAngle2 = -np.arcsin(C[0, 2])  # Pitch
-        rotAngle3 = np.arctan2(C[1, 2], C[2, 2])  # Roll
-
+        rotAngle1 = numpy.arctan2(C[0, 1], C[0, 0])   # Yaw
+        rotAngle2 = -numpy.arcsin(C[0, 2])  # Pitch
+        rotAngle3 = numpy.arctan2(C[1, 2], C[2, 2])  # Roll
     else:
-        raise NotImplementedError('Rotation sequences other than ZYX are not currently implemented')
+        raise NotImplementedError('Rotation sequences other than ' +
+		' ZYX are not currently implemented')
 
     if(output_unit == 'deg'):
-        rotAngle1 = np.rad2deg(rotAngle1)
-        rotAngle2 = np.rad2deg(rotAngle2)
-        rotAngle3 = np.rad2deg(rotAngle3)
+        rotAngle1 = numpy.rad2deg(rotAngle1)
+        rotAngle2 = numpy.rad2deg(rotAngle2)
+        rotAngle3 = numpy.rad2deg(rotAngle3)
 
     return numpy.matrix([[rotAngle3], [rotAngle2], [rotAngle1]])
-
-

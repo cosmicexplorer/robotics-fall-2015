@@ -1,3 +1,0 @@
-[submodule "baxter_pykdl"]
-	path = baxter_pykdl
-	url = https://github.com/RethinkRobotics/baxter_pykdl.git
