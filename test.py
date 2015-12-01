@@ -64,7 +64,8 @@ def getD(cur, final, scale):
     ang_d = 0
     return numpy.sqrt((lin_d * scale[0]) ** 2 + (ang_d * scale[1]) ** 2)
 
-def runResolvedRates(rkin, final, speed, freq, scale, tolerance):
+def runResolvedRates(rkin, final, speed, freq, scale, tolerance, qMax, qMin,
+                     angular_tol):
     # stupid setup stuff
     pub_joint_cmd=rospy.Publisher(
         '/robot/limb/right/joint_command',JointCommand)
@@ -76,7 +77,7 @@ def runResolvedRates(rkin, final, speed, freq, scale, tolerance):
 
     joint_states = rospy.wait_for_message("/robot/joint_states", JointState)
     cur_q = joint_states.position[9:16]
-    cur_q = [cur_q[2], cur_q[3], cur_q[0], cur_q[1], 
+    cur_q = [cur_q[2], cur_q[3], cur_q[0], cur_q[1],
              cur_q[4], cur_q[5], cur_q[6]]
     forward = rkin.forward_position_kinematics()
     quatangles = forward[3:]
@@ -88,12 +89,12 @@ def runResolvedRates(rkin, final, speed, freq, scale, tolerance):
     curVec = numpy.vstack([pos, ori])
     cur_d = getD(curVec, final, scale)
     print('cur_d:')
-    print(cur_d)              
+    print(cur_d)
     while (not rospy.is_shutdown() and cur_d > tolerance):
         J = rkin.jacobian()
         joint_states = rospy.wait_for_message("/robot/joint_states", JointState)
         cur_q = joint_states.position[9:16]
-        cur_q = [cur_q[2], cur_q[3], cur_q[0], cur_q[1], 
+        cur_q = [cur_q[2], cur_q[3], cur_q[0], cur_q[1],
                  cur_q[4], cur_q[5], cur_q[6]]
         forward = rkin.forward_position_kinematics()
         quatangles = forward[3:]
@@ -105,11 +106,13 @@ def runResolvedRates(rkin, final, speed, freq, scale, tolerance):
         print('angles:')
         print(util.dcm2angle(rot))
         curT = util.transformation(rot, pos)
-        q_dot = util.resolvedRates(J, curT, final, speed)
+        # hand-rolled algorithm
+        q_dot, out_q = util.resolvedRatesWithLimits(
+            J, curT, final, speed, cur_q, freq, qMax, qMin, angular_tol)
+        command_msg.command = out_q
         cur_d = getD(curVec, final, scale)
         print('cur_d:')
         print(cur_d)
-        command_msg.command = list(numpy.array(cur_q + (1./freq) * q_dot.T)[0])
         print('q_dot:')
         print(q_dot)
         print('cur_q:')
@@ -123,11 +126,16 @@ def runResolvedRates(rkin, final, speed, freq, scale, tolerance):
         ori = util.dcm2angle(rot)
         curVec = numpy.vstack([pos, ori])
 
+joint_maxes = []
+joint_mins = []
+
 def main():
     print("Initializing node... ")
     rospy.init_node("examples")   # the node's name is examples
     print('initializing kinematics...')
     rkin = baxter_kinematics('right')
+    print(rospy.wait_for_message('/robot/joint_states', JointState))
+    return
     print('forward kinematics:')
     forward = rkin.forward_position_kinematics()
     print(forward)
@@ -148,11 +156,12 @@ def main():
     J = rkin.jacobian()
     print(J)
     # send_to_joint_vals([-numpy.pi/3,-numpy.pi/3,-numpy.pi/6,numpy.pi/5,0,-numpy.pi/2,0])
-    final = numpy.matrix([[.8, 0, -.4, 
+    final = numpy.matrix([[.8, 0, -.4,
                            0, 0, -numpy.pi/4]]).T
     speed = [2, .1]
     scale = [1, .2]
-    runResolvedRates(rkin, final, speed, 100, scale, .05)
+    runResolvedRates(rkin, final, speed, 100, scale, .05,
+                     joint_maxes, joint_mins, 0.06)
 
 if __name__ == '__main__':
     main()
