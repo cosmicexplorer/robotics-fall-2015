@@ -88,7 +88,7 @@ def resolvedRatesWithLimits(J, T, target, speed, cur_q, freq, qMax, qMin, tol):
     numFailures = 0
     my_j = numpy.copy(J)
 
-    while numFailures < numLinks - 3:
+    while numFailures < numLinks - 4:
         q_dot = resolvedRates(my_j, T, target, speed)
         out = list(numpy.array(cur_q + (1./freq) * q_dot.T)[0])
         failures = []
@@ -101,8 +101,7 @@ def resolvedRatesWithLimits(J, T, target, speed, cur_q, freq, qMax, qMin, tol):
         my_j = zeroOutColOfMatrix(my_j, curFail)
         numFailures = numFailures + 1
     # if everything locked up, go to middle for all joints
-    middles = map(lambda (a, b): a + b / 2, zip(qMax, qMin))
-    return (None, middles)
+    return (None, map(lambda (a, b): (a + b) / 2, zip(qMax, qMin)))
 
 # A Realistic Joint Limit Algorithm for Kinematically Redundant Manipulators
 def jointLimitPaper(theta, thetamin, thetamax,alpha,J,k):

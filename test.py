@@ -33,7 +33,7 @@ def send_to_joint_vals(q):
     pub_joint_cmd=rospy.Publisher(
         '/robot/limb/right/joint_command',JointCommand)   # setup the publisher
     command_msg=JointCommand()
-    command_msg.names=['right_s0', 'right_s1', 'right_e0', 'right_e1',
+    command_msg.names=['right_e0', 'right_e1', 'right_s0', 'right_s1',
                        'right_w0', 'right_w1', 'right_w2']
     command_msg.command=q
     command_msg.mode=JointCommand.POSITION_MODE
@@ -42,7 +42,6 @@ def send_to_joint_vals(q):
     # acquire the current joint positions
     joint_positions=rospy.wait_for_message("/robot/joint_states",JointState)
     qc = joint_positions.position[9:16]
-    qc = ([qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6]]) # reorder due to the odd order that q is read in from the arm
 
     print(command_msg)
     while not rospy.is_shutdown() and numpy.linalg.norm(numpy.subtract(q,qc))>0.01: # move until the desired joint variable
@@ -50,10 +49,9 @@ def send_to_joint_vals(q):
         control_rate.sleep()                    # sending commands at 100HZ
         joint_positions=rospy.wait_for_message("/robot/joint_states",JointState)
         qc = (joint_positions.position[9:16])
-        qc = (qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6])
         #print "joint error = ", numpy.linalg.norm(numpy.subtract(q,qc))
     print("In home pose")
-    return (qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6]) # reorder due to the odd order that q is read in from the arm
+    return qc
 
 def getD(cur, final, scale):
     lin = numpy.subtract(final[0:3,0], cur[0:3,0])
@@ -139,6 +137,7 @@ joint_maxes = [3.028, 2.618, .89, 1.047, 3.059,
                2.094, 3.059]
 joint_mins = [-3.028, -.052, -2.461, -2.147, -3.059, 
               -1.571, -3.059]
+middles = map(lambda (a, b): (a + b) / 2, zip(joint_maxes, joint_mins))
 # joint_maxes = [jmax[2], jmax[3], jmax[0], jmax[1],
 #                jmax[4], jmax[5], jmax[6]]
 # joint_mins = [jmin[2], jmin[3], jmin[0], jmin[1],
@@ -173,8 +172,13 @@ def main():
     print('jocabian:')
     J = rkin.jacobian()
     print(J)
-    send_to_joint_vals([-numpy.pi/3,-numpy.pi/3,-numpy.pi/6,numpy.pi/5,0,numpy.pi/2,0])
-    # send_to_joint_vals([1.01319430924,-0.73784475813,-0.117349530139,1.65017983068,0.153398078613,0.626247655939,3.05108778362])
+    # send_to_joint_vals([-numpy.pi/3,-numpy.pi/3,-numpy.pi/6,numpy.pi/5,0,numpy.pi/2,0])
+    print('middle joints:')
+    print(middles)
+    send_to_joint_vals(middles)
+    # send_to_joint_vals([-0.117349530139,1.65017983068,
+    #                     1.01319430924,-0.73784475813,
+    #                     0.153398078613,0.626247655939,3.05108778362])
     forward = rkin.forward_position_kinematics()
     quatangles = forward[3:]
     dcm = util.dcm2angle(util.quat2rot(quatangles[0], quatangles[1],
