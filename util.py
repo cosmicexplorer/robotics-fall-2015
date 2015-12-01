@@ -37,13 +37,12 @@ def wedge6(vhat):
 # aka transform from base to end effector
 # target is a transformation from the base frame (pos/ori) (6 x n)
 def resolvedRates(J, T, target, speed):
-    # FIXME: currently ignoring all angular stuff
     linDistance = numpy.matrix(target[0:3,0]-T[0:3,3])
-    # angDistance = numpy.matrix(target[3:,0]-dcm2angle(T[0:3,0:3]))
+    angDistance = numpy.matrix(target[3:,0]-dcm2angle(T[0:3,0:3]))
     linVelocity = speed[0]*(linDistance/numpy.linalg.norm(linDistance))
-    # angVelocity = speed[1]*(angDistance/numpy.linalg.norm(angDistance))
-    # velocity = numpy.r_[linVelocity,angVelocity] # 6 x 1 in the hubrid frem!!
-    velocity = numpy.r_[linVelocity, numpy.matrix([[0],[0],[0]])]
+    angVelocity = speed[1]*(angDistance/numpy.linalg.norm(angDistance))
+    velocity = numpy.r_[linVelocity,angVelocity] # 6 x 1 in the hubrid frem!!
+    # velocity = numpy.r_[linVelocity, numpy.matrix([[0],[0],[0]])]
     qdot = numpy.linalg.pinv(J)*velocity
     return qdot
 
@@ -80,28 +79,30 @@ def dcm2angle(C, output_unit='rad', rotation_sequence='ZYX'):
     return numpy.matrix([[rotAngle3], [rotAngle2], [rotAngle1]])
 
 def zeroOutColOfMatrix(mat, col):
-    for row in range(0, mat.shape[0]): mat[row, col] = 0
+    retmat = numpy.copy(mat)
+    for row in range(0, mat.shape[0]): retmat[row, col] = 0
+    return retmat
 
 def resolvedRatesWithLimits(J, T, target, speed, cur_q, freq, qMax, qMin, tol):
     numLinks = len(qMax)
     numFailures = 0
     my_j = numpy.copy(J)
 
-    first_q_dot = resolvedRates(my_j, T, target, speed)
-    first_out = list(numpy.array(cur_q + (1./freq) * q_dot.T)[0])
-
-    while numFailures < numLinks:
+    while numFailures < numLinks - 3:
         q_dot = resolvedRates(my_j, T, target, speed)
         out = list(numpy.array(cur_q + (1./freq) * q_dot.T)[0])
         failures = []
         for i in range(0, numLinks):
-            if out[i] < qMin[i] + tol or out[i] > qMax[i] - tol:
+            if ((out[i] < qMin[i] + tol) or 
+                (out[i] > qMax[i] - tol)):
                 failures.append(i)
         if len(failures) == 0: return (q_dot, out)
         curFail = failures[0]
         my_j = zeroOutColOfMatrix(my_j, curFail)
         numFailures = numFailures + 1
-    return (first_q_dot, first_out)
+    # if everything locked up, go to middle for all joints
+    middles = map(lambda (a, b): a + b / 2, zip(qMax, qMin))
+    return (None, middles)
 
 # A Realistic Joint Limit Algorithm for Kinematically Redundant Manipulators
 def jointLimitPaper(theta, thetamin, thetamax,alpha,J,k):
