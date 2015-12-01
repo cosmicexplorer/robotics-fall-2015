@@ -193,7 +193,7 @@ def main():
     speed = [2, .1]
     scale = [1, .2]
     runResolvedRates(rkin, final, speed, 100, scale, .1,
-                     joint_maxes, joint_mins, 0.01)
+                     joint_maxes, joint_mins, 0.1)
 
 if __name__ == '__main__':
     main()

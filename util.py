@@ -85,23 +85,21 @@ def zeroOutColOfMatrix(mat, col):
 
 def resolvedRatesWithLimits(J, T, target, speed, cur_q, freq, qMax, qMin, tol):
     numLinks = len(qMax)
-    numFailures = 0
+    numFails = 0
     my_j = numpy.copy(J)
+    middles = map(lambda (a, b): (a + b) / 2, zip(qMax, qMin))
 
-    while numFailures < numLinks - 4:
+    while numFails < numLinks - 3:
         q_dot = resolvedRates(my_j, T, target, speed)
         out = list(numpy.array(cur_q + (1./freq) * q_dot.T)[0])
-        failures = []
-        for i in range(0, numLinks):
-            if ((out[i] < qMin[i] + tol) or 
-                (out[i] > qMax[i] - tol)):
-                failures.append(i)
+        failures = filter(lambda i: (out[i] < qMin[i] + tol) or 
+                                    (out[i] > qMax[i] - tol),
+                          range(0, numLinks)) 
         if len(failures) == 0: return (q_dot, out)
-        curFail = failures[0]
-        my_j = zeroOutColOfMatrix(my_j, curFail)
-        numFailures = numFailures + 1
-    # if everything locked up, go to middle for all joints
-    return (None, map(lambda (a, b): (a + b) / 2, zip(qMax, qMin)))
+        for fail in failures:
+            numFails = numFails + 1
+            my_j = zeroOutColOfMatrix(my_j, fail)
+    return (None, middles)
 
 # A Realistic Joint Limit Algorithm for Kinematically Redundant Manipulators
 def jointLimitPaper(theta, thetamin, thetamax,alpha,J,k):
