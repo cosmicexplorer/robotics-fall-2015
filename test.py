@@ -107,14 +107,14 @@ def runResolvedRates(rkin, final, speed, freq, scale, tolerance, qMax, qMin,
         # out_q = list(numpy.array(
         #    cur_q + (1./freq) * q_dot.T)[0])
 	### paper algorithm
-	# q_dot = util.resolvedRates(J, curT, final, speed)
-	# corrected_q_dot = q_dot + util.jointLimitPaper(
-        #     cur_q, qMin, qMax, angular_tol, J, 1)
-        # out_q = list(numpy.array(
-        #    cur_q + (1./freq) * corrected_q_dot.T)[0])
+	q_dot = util.resolvedRates(J, curT, final, speed)
+	corrected_q_dot = q_dot + util.jointLimitPaper(
+            cur_q, qMin, qMax, angular_tol, J, 10)
+        out_q = list(numpy.array(
+            cur_q + (1./freq) * corrected_q_dot.T)[0])
         ### hand-rolled algorithm
-        q_dot, out_q = util.resolvedRatesWithLimits(
-           J, curT, final, speed, cur_q, freq, qMax, qMin, angular_tol)
+        # q_dot, out_q = util.resolvedRatesWithLimits(
+        #    J, curT, final, speed, cur_q, freq, qMax, qMin, angular_tol)
         command_msg.command = out_q
         cur_d = getD(curVec, final, scale)
         print('cur_d:')
@@ -172,9 +172,7 @@ def main():
     print('jocabian:')
     J = rkin.jacobian()
     print(J)
-    # send_to_joint_vals([-numpy.pi/3,-numpy.pi/3,-numpy.pi/6,numpy.pi/5,0,numpy.pi/2,0])
-    print('middle joints:')
-    print(middles)
+    # send_to_joint_vals([-numpy.pi/6,numpy.pi/5,-numpy.pi/3,-numpy.pi/3,0,numpy.pi/2,0])
     send_to_joint_vals(middles)
     # send_to_joint_vals([-0.117349530139,1.65017983068,
     #                     1.01319430924,-0.73784475813,
