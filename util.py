@@ -78,3 +78,25 @@ def dcm2angle(C, output_unit='rad', rotation_sequence='ZYX'):
         rotAngle3 = numpy.rad2deg(rotAngle3)
 
     return numpy.matrix([[rotAngle3], [rotAngle2], [rotAngle1]])
+
+# A Realistic Joint Limit Algorithm for Kinematically Redundant Manipulators
+def jointLimitPaper(theta, thetamin, thetamax,alpha,J,k):
+    # theta is an array of current joint angles (nx1)
+    # thetamin/max are arrays of joint limits for each joint (nx1)
+    # alpha is the tolerance angle
+    # J is the current jacobian
+    # k is a scaling factor
+    dp_dtheta = []
+    for i in range(0, len(theta)) :
+        ei = thetamax[i]- thetamin[i]
+        dp1_dtheta = 0
+        if theta[i]<thetamin[i]+alpha:
+            dp1_dtheta = 2*(theta[i]/(ei**2))
+        dp2_dtheta = 0
+        if theta[i]>thetamax[i]-alpha:
+            dp2_dtheta = 2*(theta[i]/(ei**2))
+        dp_dtheta.append(dp1_dtheta+dp2_dtheta)
+    pinv_times_J = numpy.linalg.pinv(J)*J
+    dp_dtheta_vect = numpy.matrix([dp_dtheta]).T
+    return (numpy.identity(pinv_times_J.shape[0])-pinv_times_J)*(-k*dp_dtheta_vect)
+        
