@@ -110,13 +110,15 @@ def jointLimitPaper(theta, thetamin, thetamax,alpha,J,k):
     # k is a scaling factor
     dp_dtheta = []
     for i in range(0, len(theta)) :
-        ei = thetamax[i]- thetamin[i]
+        ei = thetamax[i] - thetamin[i]
         dp1_dtheta = 0
         if theta[i]<thetamin[i]+alpha:
-            dp1_dtheta = 2*(theta[i]/(ei**2))
+            c = thetamin[i] + alpha
+            dp1_dtheta = 2*(theta[i]-c)/(ei**2)
         dp2_dtheta = 0
         if theta[i]>thetamax[i]-alpha:
-            dp2_dtheta = 2*(theta[i]/(ei**2))
+            c = thetamax[i] - alpha
+            dp2_dtheta = 2*(theta[i]-c)/(ei**2)
         dp_dtheta.append(dp1_dtheta+dp2_dtheta)
     pinv_times_J = numpy.linalg.pinv(J)*J
     dp_dtheta_vect = numpy.matrix([dp_dtheta]).T

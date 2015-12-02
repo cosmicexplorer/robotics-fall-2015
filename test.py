@@ -173,13 +173,13 @@ def main():
     J = rkin.jacobian()
     print(J)
     ### top left
-    # send_to_joint_vals([-numpy.pi/6,numpy.pi/5,-numpy.pi/3,-numpy.pi/3,0,numpy.pi/2,0])
+    send_to_joint_vals([-numpy.pi/6,numpy.pi/5,-numpy.pi/3,-numpy.pi/3,0,numpy.pi/2,0])
     ### side
     # send_to_joint_vals(middles)
     ### front
-    send_to_joint_vals([-0.117349530139,0,
-                        1.01319430924, 0,
-                        0.153398078613,0.626247655939,3.05108778362])
+    # send_to_joint_vals([-0.117349530139,0,
+    #                    1.01319430924, 0,
+    #                    0.153398078613,0.626247655939,3.05108778362])
     ### desired
     # send_to_joint_vals([-0.117349530139,1.65017983068,
     #                     1.01319430924,-0.73784475813,
