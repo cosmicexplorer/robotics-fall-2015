@@ -43,15 +43,17 @@ def resolvedRates(alpha, tol, getJacobian, waiter, angles_get, getT, posori_get,
     x_err = x_des - x_cur
     v_des = speed * x_err / numpy.linalg.norm(x_err)
 
-    # v_matrix_des = speed * 
+    # v_matrix_des = speed *
     # waiter should be NEWLY CONSTRUCTED
     waiter.sleep()              # start off sleeping
-    
+
     while numpy.linalg.norm(x_err) > tol:
         g_inv = numpy.linalg.inv(T)
         g_d = posOriToTransformMat(x0 + v_des * t)
         p_cur_err = logtr(g_inv * g_d)
         J = getJacobian()
+        # FIXME: v_des is 6x1, p_cur_err is 4x4 (from logtr, which calls
+        # hat6). this is a problem.
         q_dot = numpy.linalg.pinv(J) * (v_des + alpha * p_cur_err)
         # TODO: call correction function here to modify q_dot, if applicable
         q = angles_get() + q_dot * dt
@@ -150,9 +152,9 @@ def resolvedRatesWithLimits(J, T, target, speed, cur_q, freq, qMax, qMin, tol):
     while numFails < numLinks - 3:
         q_dot = resolvedRates(my_j, T, target, speed)
         out = list(numpy.array(cur_q + (1./freq) * q_dot.T)[0])
-        failures = filter(lambda i: (out[i] < qMin[i] + tol) or 
+        failures = filter(lambda i: (out[i] < qMin[i] + tol) or
                                     (out[i] > qMax[i] - tol),
-                          range(0, numLinks)) 
+                          range(0, numLinks))
         if len(failures) == 0: return (q_dot, out)
         for fail in failures:
             numFails = numFails + 1
