@@ -27,28 +27,32 @@ from geometry_msgs.msg import (
     Point,
     Quaternion,
 )
-def send_to_joint_vals(q):
+
+def good_joint_names_for_arm(arm):
+    subs = ['e0','e1','s0','s1','w0','w1','w2']
+    return map(lambda s: arm + '_' + s, subs)
+
+def send_to_joint_vals(q, arm='right'):
     # Send Baxter to the home configuration
     # create joint commands for home pose
-    pub_joint_cmd=rospy.Publisher(
-        '/robot/limb/right/joint_command',JointCommand)   # setup the publisher
-    command_msg=JointCommand()
-    command_msg.names=['right_e0', 'right_e1', 'right_s0', 'right_s1',
-                       'right_w0', 'right_w1', 'right_w2']
-    command_msg.command=q
-    command_msg.mode=JointCommand.POSITION_MODE
+    pub_joint_cmd = rospy.Publisher(
+        '/robot/limb/' + arm + '/joint_command',JointCommand)   # setup the publisher
+    command_msg = JointCommand()
+    command_msg.names = good_joint_names_for_arm(arm)
+    command_msg.command = q
+    command_msg.mode = JointCommand.POSITION_MODE
     control_rate = rospy.Rate(100) # sending commands at 100HZ
 
     # acquire the current joint positions
-    joint_positions=rospy.wait_for_message("/robot/joint_states",JointState)
+    joint_positions = rospy.wait_for_message("/robot/joint_states",JointState)
     qc = joint_positions.position[9:16]
 
     print(command_msg)
     while not rospy.is_shutdown() and numpy.linalg.norm(numpy.subtract(q,qc))>0.01: # move until the desired joint variable
         pub_joint_cmd.publish(command_msg)    # sends the commanded joint values to Baxter
         control_rate.sleep()                    # sending commands at 100HZ
-        joint_positions=rospy.wait_for_message("/robot/joint_states",JointState)
-        qc = (joint_positions.position[9:16])
+        joint_positions = rospy.wait_for_message("/robot/joint_states",JointState)
+        qc = joint_positions.position[9:16]
         #print "joint error = ", numpy.linalg.norm(numpy.subtract(q,qc))
     print("In home pose")
     return qc
@@ -92,14 +96,21 @@ def main():
     rospy.init_node("examples")   # the node's name is examples
     msg = rospy.wait_for_message("/robot/joint_states", JointState)
     rkin = baxter_kinematics('right')
+    lkin = baxter_kinematics('left')
     ### top left
-    # send_to_joint_vals([-numpy.pi/6,numpy.pi/5,-numpy.pi/3,-numpy.pi/3,0,numpy.pi/2,0])
+    # send_to_joint_vals([-numpy.pi/3,-numpy.pi/3,-numpy.pi/6,numpy.pi/5,0,numpy.pi/2,0])
     ### side
     # send_to_joint_vals(middles)
     ### front
-    send_to_joint_vals([-0.117349530139,0, 1.01319430924, 0, 0.153398078613,0.626247655939,3.05108778362])
+    # send_to_joint_vals([-0.117349530139,0, 1.01319430924, 0, 0.153398078613,0.626247655939,3.05108778362])
     ### desired
     # send_to_joint_vals([-0.117349530139,1.65017983068, 1.01319430924,-0.73784475813, 0.153398078613,0.626247655939,3.05108778362])
+    ### matlab test
+    # send_to_joint_vals([.1, 1.5889, 1, -.84, -.0670, .8049, -.0401])
+    # T = getT(lkin)
+    # print(T[0:3,3])
+    # print(util.dcm2angle(T[0:3,0:3]))
+    # return
     final = numpy.matrix([[.67206115, -.16257794, .01516517,
                            3.12855761, -.03523214, .12796079]]).T
 
