@@ -67,7 +67,8 @@ def runResolvedRates(rkin, publish_fun, final, speed, freq, tolerance, alpha, qM
         speed,
         1./freq)
 
-def getT(rkin):
+def getT(rkin):	
+    command_msg.names=['right_s0', 'right_s1', 'right_e0', 'right_e1',  'right_w0', 'right_w1', 'right_w2']
     forward = rkin.forward_position_kinematics()
     quatangles = forward[3:]
     rot = util.quat2rot(quatangles[0], quatangles[1], quatangles[2],
@@ -79,7 +80,7 @@ def getT(rkin):
 def getPosOriVector(T):
     rot = T[:3,:3]
     pos = T[:3, 3]
-    ori = util.dcm2angle(rot)
+    ori = util.R2rpy(rot)
     return numpy.vstack([pos, ori])
 
 # ripped from baxter website
@@ -99,18 +100,22 @@ def main():
     ### front
     send_to_joint_vals([-0.117349530139,0, 1.01319430924, 0, 0.153398078613,0.626247655939,3.05108778362])
     ### desired
-    # send_to_joint_vals([-0.117349530139,1.65017983068, 1.01319430924,-0.73784475813, 0.153398078613,0.626247655939,3.05108778362])
+    send_to_joint_vals([-0.117349530139,1.65017983068, 1.01319430924,-0.73784475813, 0.153398078613,0.626247655939,3.05108778362])
+    #final = numpy.matrix([[.67206115, -.16257794, .01516517,
+    #                       3.12855761, -.03523214, .12796079]]).T
     final = numpy.matrix([[.67206115, -.16257794, .01516517,
-                           3.12855761, -.03523214, .12796079]]).T
+                           0.12012058, -0.03888392, -3.13697896]]).T
+
 
     pub_joint_cmd = rospy.Publisher(
         '/robot/limb/right/joint_command',JointCommand)
     command_msg = JointCommand()
-    command_msg.names = ['right_e0', 'right_e1', 'right_s0', 'right_s1',
-                         'right_w0', 'right_w1', 'right_w2']
+    #command_msg.names = ['right_e0', 'right_e1', 'right_s0', 'right_s1',
+    #                     'right_w0', 'rightfor_w1', 'right_w2']
+    command_msg.names=['right_s0', 'right_s1', 'right_e0', 'right_e1',  'right_w0', 'right_w1', 'right_w2']
     command_msg.mode=JointCommand.POSITION_MODE
 
-    speed = 2
+    speed = 0.5
     alpha = .5
     freq = 100
     tolerance = .01
@@ -121,6 +126,7 @@ def main():
     
 # assumes that pub_joint_cmd and cmd_msg are appropriately constructed
 def publish_joints(cmd, cmd_msg, q):
+    q = ([q[2], q[3], q[0], q[1], q[4], q[5], q[6]])
     cmd_msg.command = [float(q_i) for q_i in q]
     cmd.publish(cmd_msg)
 

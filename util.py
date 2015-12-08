@@ -1,4 +1,5 @@
 import numpy
+import numpy.matlib
 
 def hat3(v):
     return numpy.matrix([[0,-v[2],v[1]],
@@ -32,8 +33,8 @@ def posOriToTransformMat(V):
 # posori_get: fun, takes transformation matrix, returns 6x1 pos/ori vector
 # publish_fun: recieve desired q
 # x_des: target position
-# dt: delta time
-def resolvedRates(alpha, tol, getJacobian, waiter, angles_get, getT, posori_get, publish_fun, x_des, speed, dt):
+# dt: delta time        err = [final(1)-Oe(1);final(2)-Oe(2);final(3)-Oe(3)];
+def resolvedRatesorig(alpha, tol, getJacobian, waiter, angles_get, getT, posori_get, publish_fun, x_des, speed, dt):
     # linear trajectory, so no explicit trajectory array
     # drawn directly from solutions for assignment 5
     t = 0
@@ -48,20 +49,72 @@ def resolvedRates(alpha, tol, getJacobian, waiter, angles_get, getT, posori_get,
     waiter.sleep()              # start off sleeping
     
     while numpy.linalg.norm(x_err) > tol:
-        g_inv = numpy.linalg.inv(T)
+	if numpy.linalg.norm(x_err[0:3]) < tol:
+		v_des[0:3,0]=0     
+	g_inv = invT(T)
         g_d = posOriToTransformMat(x0 + v_des * t)
         p_cur_err = logtr(g_inv * g_d)
+	print p_cur_err
         J = getJacobian()
-        q_dot = numpy.linalg.pinv(J) * (v_des + alpha * p_cur_err)
+        q_dot = numpy.linalg.pinv(J)*(v_des + alpha * p_cur_err)
         # TODO: call correction function here to modify q_dot, if applicable
         q = angles_get() + q_dot * dt
         t += dt
         publish_fun(q)
-
+	T
         waiter.sleep()
         T = getT()
         x_cur = posori_get(T)
         x_err = x_des - x_cur
+
+def resolvedRates(alpha, tol, getJacobian, waiter, angles_get, getT, posori_get, publish_fun, x_des, speed, dt):
+    # linear trajectory, so no explicit trajectory array
+    # drawn directly from solutions for assignment 5
+    t = 0
+    T = getT()
+    x_cur = posori_get(T)
+    x_err = x_des - x_cur
+    v_des = speed * x_err / numpy.linalg.norm(x_err)
+    v_des = x_err
+    print 'x_err'
+    print x_err
+    print 'x_des'
+    print x_des
+    print 'x_cur'
+    print x_cur
+    print 'speed'
+    print speed
+    print 'v_des'
+    print v_des
+    print 'angles_get()'
+    print angles_get()
+    # v_matrix_des = speed * 
+    # waiter should be NEWLY CONSTRUCTED
+    waiter.sleep()              # start off sleeping
+    
+    while numpy.linalg.norm(x_err) > tol:
+        J = getJacobian()
+	if (numpy.linalg.norm(x_err[0:3]) <tol):
+		v_des[0:3]=0
+	if (numpy.linalg.norm(x_err[3:6]) <tol):
+		v_des[3:6]=0
+	print 'J'
+	print J
+	print 'numpy.linalg.pinv(J)'
+	print numpy.linalg.pinv(J)
+        q_dot = numpy.linalg.pinv(J)*(v_des)
+        # TODO: call correction function here to modify q_dot, if applicable
+        q = angles_get() + q_dot * dt
+	t += dt
+	print 'q_dot'
+	print q_dot
+        publish_fun(q)
+	T
+        waiter.sleep()
+        T = getT()
+        x_cur = posori_get(T)
+        x_err = x_des - x_cur
+	v_des = speed * x_err / numpy.linalg.norm(x_err)
 
 def quat2rot(qx,qy,qz,qw):
     return numpy.matrix(
@@ -131,9 +184,15 @@ def dcm2angle(C, output_unit='rad', rotation_sequence='ZYX'):
 
     return -1 * numpy.matrix([[rotAngle3], [rotAngle2], [rotAngle1]])
 
+def R2rpy(R):
+	alpha = numpy.arctan2(R[1, 0], R[0, 0]) # rot x
+	beta = numpy.arctan2(-1*R[2, 0], numpy.sqrt(R[2, 1]**2+R[2, 2]**2)) # rot y
+	gamma = numpy.arctan2(R[2, 1], R[2, 2]) # rot z
+	return numpy.matrix([[alpha],[beta],[gamma]])
+
 def transformMatToPosOri(T):
     pos = T[:3,3]
-    ori = dcm2angle(T[:3,:3])
+    ori = R2rpy(T[:3,:3])
     return numpy.vstack([pos, ori])
 
 def zeroOutColOfMatrix(mat, col):
@@ -184,7 +243,11 @@ def jointLimitPaper(theta, thetamin, thetamax,alpha,J,k):
 
 def logtr(g):
     R = g[0:3,0:3]
-    theta = numpy.arccos((numpy.trace(R)-1)/2)
+
+    theta = numpy.arccos((numpy.trace(R)-1.)/2.)
+    testval = numpy.absolute((numpy.trace(R)-1.)/2-1)
+    if testval < .0000000001:
+        theta=0
     p = g[0:3,3]
 
     if numpy.absolute(theta) < 1e-8:
@@ -192,13 +255,21 @@ def logtr(g):
         v = p
     else:
         w = numpy.zeros((3,1))
-        w[0] = 1/2/numpy.sin(theta)*(R[2,1]-R[1,2])
-        w[1] = 1/2/numpy.sin(theta)*(R[0,2]-R[2,0])
-        w[2] = 1/2/numpy.sin(theta)*(R[1,0]-R[0,1])
+        w[0] = 1./2./numpy.sin(theta)*(R[2,1]-R[1,2])
+        w[1] = 1./2./numpy.sin(theta)*(R[0,2]-R[2,0])
+        w[2] = 1./2./numpy.sin(theta)*(R[1,0]-R[0,1])
 
         A = (numpy.identity(3)-R)*hat3(w)+w*w.T*theta
-        v = numpy.linalg.solve(A,p)
+        if numpy.linalg.det(A)==0:
+            v=numpy.linalg.lstsq(A,p)
+        else:
+            v = numpy.linalg.solve(A,p)
         w = w*theta
         v = v*theta
+    return numpy.vstack([v,w])
 
-    return hat6(numpy.vstack([v,w]))
+def invT(T):
+    R = T[0:3,0:3]
+    p = T[0:3,3]
+    return transformation(R,p)
+    
