@@ -35,13 +35,12 @@ def main():
             ex[i,:]= numpy.scipy.expm(util.hat6(tw[:,i])*q(i))
 
         
-        # calculate jacobian J, H
+        # calculate jacobian J, H stuff left out.. needs to be put in
         Oe = He[0:3,3]
         O = numpy.matlib.zeros((3,7))
         
         CurrR = He[0:3,0:3]
-        ErrR  = CurrR\Rdes
-        numpy.dot(invt(CurrR),Rdes)
+        ErrR  = numpy.dot(invt(CurrR),Rdes)
         theta=acos((numpy.trace(Re)-1)/2)  
         me=(1/(2/sin(theta)))*asarray([[Re[2,1]-Re[1,2]],[Re[0,2]-Re[2,0]],[Re[1,0]-Re[0,1]]]) ##error in ori
 

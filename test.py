@@ -5,6 +5,7 @@ import rospy
 import tf
 import numpy
 import util
+import demo
 from baxter_pykdl import baxter_kinematics
 
 from tf import transformations
@@ -102,7 +103,7 @@ def main():
     ### side
     # send_to_joint_vals(middles)
     ### front
-    # send_to_joint_vals([-0.117349530139,0, 1.01319430924, 0, 0.153398078613,0.626247655939,3.05108778362])
+    #send_to_joint_vals([-0.117349530139,0, 1.01319430924, 0, 0.153398078613,0.626247655939,3.05108778362])
     ### desired
     # send_to_joint_vals([-0.117349530139,1.65017983068, 1.01319430924,-0.73784475813, 0.153398078613,0.626247655939,3.05108778362])
     ### matlab test
@@ -111,8 +112,9 @@ def main():
     # print(T[0:3,3])
     # print(util.dcm2angle(T[0:3,0:3]))
     # return
-    final = numpy.matrix([[.67206115, -.16257794, .01516517,
-                           3.12855761, -.03523214, .12796079]]).T
+    #final = numpy.matrix([[.67206115, -.16257794, .01516517,
+    # final = numpy.matrix([[.9, 0, 0,
+    #                       3.12855761, -.03523214, .12796079]]).T
 
     pub_joint_cmd = rospy.Publisher(
         '/robot/limb/right/joint_command',JointCommand)
@@ -124,12 +126,22 @@ def main():
     speed = 2
     alpha = .5
     freq = 100
-    tolerance = .01
-    runResolvedRates(
-        rkin, 
-        lambda q: publish_joints(pub_joint_cmd, command_msg, q),
-        final, speed, freq, tolerance, alpha, joint_maxes, joint_mins)
-    
+    tolerance = .03
+    #runResolvedRates(
+    #   rkin, 
+    #   lambda q: publish_joints(pub_joint_cmd, command_msg, q),
+    #   final, speed, freq, tolerance, alpha, joint_maxes, joint_mins)
+    q = numpy.matrix([rospy.wait_for_message("/robot/joint_states", 
+                                       JointState).position[9:16]]).T,
+    pi = numpy.pi
+    Tdes = [[numpy.cos(pi/2), 0, numpy.sin(pi/2), 1],[0, 1, 0, 0],[-numpy.sin(pi/2), 0, numpy.cos(pi/2), 0],[0, 0, 0, 1]]
+    q = [1.229,-0.620,-1.269,1.607,0.775,1.275,1.794]
+    #send_to_joint_vals(q)
+    #Tdes = util.transformation(util.rotY(numpy.pi/2),numpy.matrix([[.8],[0],[0]]))
+    print Tdes
+    q = demo.inv_kin2()
+    #send_to_joint_vals(q)	
+    print q
 # assumes that pub_joint_cmd and cmd_msg are appropriately constructed
 def publish_joints(cmd, cmd_msg, q):
     cmd_msg.command = [float(q_i) for q_i in q]

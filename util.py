@@ -69,53 +69,67 @@ def resolvedRatesorig(alpha, tol, getJacobian, waiter, angles_get, getT, posori_
         x_err = x_des - x_cur
 
 def resolvedRates(alpha, tol, getJacobian, waiter, angles_get, getT, posori_get, publish_fun, x_des, speed, dt):
-    # linear trajectory, so no explicit trajectory array
-    # drawn directly from solutions for assignment 5
-    t = 0
-    T = getT()
-    x_cur = posori_get(T)
-    x_err = x_des - x_cur
-    v_des = speed * x_err / numpy.linalg.norm(x_err)
-    v_des = x_err
-    print 'x_err'
-    print x_err
-    print 'x_des'
-    print x_des
-    print 'x_cur'
-    print x_cur
-    print 'speed'
-    print speed
-    print 'v_des'
-    print v_des
-    print 'angles_get()'
-    print angles_get()
-    # v_matrix_des = speed * 
-    # waiter should be NEWLY CONSTRUCTED
-    waiter.sleep()              # start off sleeping
     
-    while numpy.linalg.norm(x_err) > tol:
-        J = getJacobian()
-	if (numpy.linalg.norm(x_err[0:3]) <tol):
-		v_des[0:3]=0
-	if (numpy.linalg.norm(x_err[3:6]) <tol):
-		v_des[3:6]=0
-	print 'J'
-	print J
-	print 'numpy.linalg.pinv(J)'
-	print numpy.linalg.pinv(J)
-        q_dot = numpy.linalg.pinv(J)*(v_des)
-        # TODO: call correction function here to modify q_dot, if applicable
-        q = angles_get() + q_dot * dt
-	t += dt
-	print 'q_dot'
-	print q_dot
-        publish_fun(q)
-	T
-        waiter.sleep()
+    waiter.sleep()              # start off sleeping
+    test = True
+    q = angles_get()
+    while test:
         T = getT()
-        x_cur = posori_get(T)
-        x_err = x_des - x_cur
-	v_des = speed * x_err / numpy.linalg.norm(x_err)
+	#print T
+
+    	pos_cur = T[0:3,3]
+    	pos_des = x_des[0:3,0]
+	#print pos_cur
+	#print pos_des
+    	pos_err = pos_des-pos_cur
+	#print pos_err
+
+
+
+        npos_err = (numpy.linalg.norm(pos_err))
+	npos_err
+    	# need to tune these constants
+    	v = 0.1*pos_err
+        
+
+    	R_cur = T[0:3,0:3]
+    	# hardcoded in now for flat orientation
+    	R_des = rotY(numpy.pi/2)
+    	R_err=numpy.dot(R_des,numpy.transpose(R_cur))
+    	k=numpy.arccos((numpy.trace(R_err)-1)/2)
+    	rot_err=(1./(2./numpy.sin(k)))*numpy.matrix([[R_err[2,1]-R_err[1,2]],[R_err[0,2]-R_err[2,0]],[R_err[1,0]-R_err[0,1]]]) ##error in orientation
+	nrot_err = (numpy.linalg.norm(rot_err))
+	# need to tune these constants
+    	w = 0.1*k*rot_err
+	w = numpy.matlib.zeros((3,1))
+	nrot_err = tol
+    
+	if (npos_err>tol) and (nrot_err>tol):
+		donothing = 0
+		print('hi')
+	elif (npos_err>tol) and (nrot_err<tol):
+		w = numpy.matlib.zeros((3,1))
+	elif (npos_err<tol) and (nrot_err>tol):
+		v = numpy.matlib.zeros((3,1))
+	elif (npos_err<tol) and (nrot_err<tol):
+		w = numpy.matlib.zeros((3,1))
+		v = numpy.matlib.zeros((3,1))
+		test = False
+        
+	J = getJacobian()
+	#print J
+	#pinv = numpy.transpose(J)*(J*numpy.transpose(J)+0.01*numpy.eye(6,6))**(-1)
+	pinv =numpy.linalg.pinv(J)
+	#print numpy.vstack((v,w))
+        q_dot = pinv*(numpy.vstack((v,w)))
+	qprev = q
+	q= qprev + q_dot*dt
+	print q
+	#q = ([q[2], q[3], q[0], q[1], q[4], q[5], q[6]]) # reorder due to the odd order that q is read in from the arm
+
+        publish_fun(q)
+        waiter.sleep()
+
 
 def quat2rot(qx,qy,qz,qw):
     return numpy.matrix(
@@ -273,4 +287,20 @@ def invT(T):
     R = T[0:3,0:3]
     p = T[0:3,3]
     return transformation(R,p)
+
+def rotX(theta):
+    R = numpy.matrix([[1,0,0],
+                      [0,numpy.cos(theta),-numpy.sin(theta)],
+                      [0,numpy.sin(theta),numpy.cos(theta)]])
+    return R
+
+def rotY(theta):
+    R = numpy.matrix([[numpy.cos(theta),0,numpy.sin(theta)],
+                      [0,1,0],
+                      [-numpy.sin(theta),0,numpy.cos(theta)]])
+    return R
+def rotZ(theta):
+    R = numpy.matrix([[numpy.cos(theta),-numpy.sin(theta),0],
+                     [numpy.sin(theta),numpy.cos(theta),0],
+                     [0,0,1]])
     
