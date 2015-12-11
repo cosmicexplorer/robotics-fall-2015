@@ -56,11 +56,11 @@ def Rz(th):
     return [[C(th),-S(th),0],[S(th),C(th),0],[0,0,1]]
 
 def R_norm(R):
-	aa = -numpy.cross((R[0][2],R[1][2],R[2][2]), (R[0][1],R[1][1],R[2][1]))
-	bb = numpy.cross((R[0][2],R[1][2],R[2][2]), aa)
+	aa = -numpy.cross((R[0,2],R[1,2],R[2,2]), (R[0,1],R[1,1],R[2,1]))
+	bb = numpy.cross((R[0,2],R[1,2],R[2,2]), aa)
 	aa = numpy.multiply(1/numpy.linalg.norm(aa), aa)
 	bb = numpy.multiply(1/numpy.linalg.norm(bb), bb)
-	cc = numpy.multiply(1/numpy.linalg.norm((R[0][2],R[1][2],R[2][2])), (R[0][2],R[1][2],R[2][2]))
+	cc = numpy.multiply(1/numpy.linalg.norm((R[0,2],R[1,2],R[2,2])), (R[0,2],R[1,2],R[2,2]))
 	return numpy.column_stack((numpy.transpose(aa),numpy.transpose(bb), numpy.transpose(cc)))
 
 def R2quaternion(R):
@@ -71,9 +71,9 @@ def R2quaternion(R):
 	return [epsi, epsj, epsk, eta] # note the format is [i, j, k, eta]
 
 def R2rpy(R):
-	alpha = math.atan2(R[1][0], R[0][0]) # rot x (torso)
-	beta = math.atan2(-1*R[2][0], math.sqrt(R[2][1]**2+R[2][2]**2)) # rot y
-	gamma = math.atan2(R[2][1], R[2][2]) # rot z
+	alpha = math.atan2(R[1,0], R[0,0]) # rot x (torso)
+	beta = math.atan2(-1*R[2,0], math.sqrt(R[2,1]**2+R[2,2]**2)) # rot y
+	gamma = math.atan2(R[2,1], R[2,2]) # rot z
 	return [[alpha],[beta],[gamma]]
 
 def R2axisang(R): # note only returns k in this case
@@ -81,7 +81,7 @@ def R2axisang(R): # note only returns k in this case
 	if numpy.abs(theta-0.01) < 0:
 		k = [[0],[0],[0]]
 	else:
-		k = numpy.multiply(1/(2*math.sin(theta)), [[R[2][1]-R[1][2]],[R[0][2]-R[2][0]],[R[1][0]-R[0][1]]])
+		k = numpy.multiply(1/(2*math.sin(theta)), [[R[2,1]-R[1,2]],[R[0,2]-R[2,0]],[R[1,0]-R[0,1]]])
 	return k
 
 def mag_speed(speed_max, speed_min, delta, eps, Lambda):
@@ -197,17 +197,20 @@ def send_to_joint_vals(q):
 
     	joint_positions=rospy.wait_for_message("/robot/joint_states",JointState)
 	qc = joint_positions.position[9:16]
-	qc = ([qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6]]) # reorder due to the odd order that q is read in from the arm
+        qc = ([qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6]])
 
-	while not rospy.is_shutdown() and numpy.linalg.norm(numpy.subtract(q,qc))>0.01:
+        print('q,qc')
+        print(q)
+        print(qc)
+	while not rospy.is_shutdown() and numpy.linalg.norm(numpy.subtract(q,qc))> 0.07:
 		pub_joint_cmd.publish(command_msg)	# sends the commanded joint values to Baxter
 		control_rate.sleep()
 		joint_positions=rospy.wait_for_message("/robot/joint_states",JointState)
     		qc = (joint_positions.position[9:16])
-		qc = (qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6])
-		#print "joint error = ", numpy.linalg.norm(numpy.subtract(q,qc))
+                qc = (qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6])
+		print "joint error = ", numpy.linalg.norm(numpy.subtract(q,qc))
 	print("In home pose")
-    	return (qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6]) # reorder due to the odd order that q is read in from the arm
+        return (qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6])
 
 def getpose():
 	pub_joint_cmd=rospy.Publisher('/robot/limb/right/joint_command',JointCommand)
@@ -277,7 +280,8 @@ def inv_kin(Rot,XYZ,q):
     Rd = Rot
     Pd = XYZ
 
-    # setup position convergence radius
+    # setup position convergence radiusor =  0.249222939268
+
     lambda_v = 100
     v_max = 0.05
     v_min = 0.0024
@@ -335,12 +339,15 @@ def inv_kin(Rot,XYZ,q):
 
 def get_joint_values(arm):
     posVec = rospy.wait_for_message("/robot/joint_states", JointState).position
+    qc = []
     if 'left' == arm:
-        return posVec[2:8]
+        qc = posVec[2:8]
     elif 'right' == arm:
-        return posVec[9:16]
+        qc = posVec[9:16]
     else:
         raise RuntimeError(arm + " is invalid arm!")
+    qc = ([qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6]])
+    return qc
 
 def get_trans(arm):
     listener = tf.TransformListener()
@@ -359,32 +366,43 @@ def rot_pos(trans):
 
 def down_to_up(down, up_z):
     up_trans = down['trans'] * up_z
+    print('down[\'trans\']')
+    print(down['trans'])
+    print('up_z')
+    print(up_z)
+    print('up_trans')
+    print(up_trans)
     rot, pos = rot_pos(up_trans)
-    up_pos = inv_kin(rot, pos, down['q'])
+    up_pos = inv_kin(numpy.array(rot), numpy.array(pos.T)[0], down['q'])
     return {
-        'q': up_pos,
-        'trans': up_trans
+        'q': tuple(up_pos),
+        'trans': numpy.matrix(up_trans)
     }
 
 # init_pos is the position of baxter at the first key, pressing down, as joints
 # key_delta is a transformation matrix, as is up_z
 def generate_q_for_keys(cur_pos, cur_trans, num_keys, key_delta, up_z, arm):
     downs = []
+    cur_trans = numpy.matrix(cur_trans)
+    key_delta = numpy.matrix(key_delta)
     for i in range(0, num_keys):
         downs.append({
-            'q': cur_pos,
-            'trans': cur_trans
+            'q': tuple(cur_pos),
+            'trans': numpy.matrix(cur_trans)
         })
+        print(cur_trans)
+        print(cur_pos)
         cur_trans = cur_trans * key_delta
-        rot, pos = rot_pos(cur_trans)
+        rot, pos = rot_pos(numpy.array(cur_trans))
         cur_pos = inv_kin(rot, pos, cur_pos)
-    ups = map(down_to_up, downs)
+    ups = map(lambda el: down_to_up(el, up_z), downs)
     return (downs, ups)
 
 key_delta_pos = [0, .0762, 0]
-key_delta = util.transform(numpy.eye(3), key_delta_pos)
-up_z_delta_pos = [0, 0, .01]
-up_z_delta = util.transform(numpy.eye(3), up_z_delta_pos)
+# key_delta_pos = [0, .03, 0]
+key_delta = util.transformation(numpy.eye(3), key_delta_pos)
+up_z_delta_pos = [0, 0, -.05]
+up_z_delta = util.transformation(numpy.eye(3), up_z_delta_pos)
 
 NUM_KEYS = 8
 
@@ -393,12 +411,24 @@ def main():
         raw_input("press enter to read joint values and transformation")
         init_q = get_joint_values('right')
         init_trans = get_trans('right')
+        print(init_q)
+        print(init_trans)
         key_downs, key_ups = generate_q_for_keys(
-            init_q, init_trans, NUM_KEYS, key_delta, up_z_delta_pos, 'right')
+            init_q, init_trans, NUM_KEYS, key_delta, up_z_delta, 'right')
         raw_input("press enter to begin the program")
-        for i in range(0, NUM_KEYS):
-            send_to_joint_vals(key_downs[i])
-            send_to_joint_vals(key_ups[i])
+	send_to_joint_vals(key_ups[0]['q'])
+        raw_input('')
+        send_to_joint_vals(key_ups[4]['q'])
+        raw_input('')
+        send_to_joint_vals(key_downs[4]['q'])
+        # for i in range(0, NUM_KEYS):
+        #     print('key downs/ups')
+        #     print(key_downs[i])
+        #     print(key_ups[i])
+        #     control_rate.sleep()
+        #     send_to_joint_vals(key_downs[i]['q'])
+        #     control_rate.sleep()
+        #     send_to_joint_vals(key_ups[i]['q'])
         print('bye!')
 
 if __name__ == '__main__':
