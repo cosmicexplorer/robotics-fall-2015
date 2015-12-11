@@ -35,6 +35,7 @@ from geometry_msgs.msg import (
     Point,
     Quaternion,
 )
+import util
 
 def C(theta):
     return math.cos(theta)
@@ -53,8 +54,8 @@ def Ry(th):
 def Rz(th):
 # Rotation matrix about the z-axis
     return [[C(th),-S(th),0],[S(th),C(th),0],[0,0,1]]
-    
-def R_norm(R): 
+
+def R_norm(R):
 	aa = -numpy.cross((R[0][2],R[1][2],R[2][2]), (R[0][1],R[1][1],R[2][1]))
 	bb = numpy.cross((R[0][2],R[1][2],R[2][2]), aa)
 	aa = numpy.multiply(1/numpy.linalg.norm(aa), aa)
@@ -96,7 +97,7 @@ def A_calc(theta,a,alpha,d):
 
 def DH(THETA, A, ALPHA, D):
     T_RA = [[0.70711, 0.70711, 0, 0.064027],[-0.70711, 0.70711, 0, -0.25903],[0, 0, 1, 0.12963],[0, 0, 0, 1]]
-    #T_LA = [[0.70711,-0.70711, 0, 0.064027],[ 0.70711, 0.70711, 0,  0.25903],[0, 0, 1, 0.12963],[0, 0, 0, 1]] 
+    #T_LA = [[0.70711,-0.70711, 0, 0.064027],[ 0.70711, 0.70711, 0,  0.25903],[0, 0, 1, 0.12963],[0, 0, 0, 1]]
     T = numpy.zeros((4,4,7))
     T[:,:,0] = numpy.dot(T_RA, A_calc(THETA[0], A[0], ALPHA[0], D[0]))
     for i in xrange(1,len(THETA)):
@@ -111,17 +112,17 @@ def hat(H):
 
 def xi_rev(w,q):
     return numpy.vstack((numpy.transpose(matrix(numpy.cross(-w, q))), numpy.transpose(matrix(w))))
-    
+
 def baxter_fk(q):
     w = numpy.array([[0, 0.708733236,  0.705474709,    0.708729912,    0.70547736, 0.708723667,  0.705482832],
                      [0, 0.705476577, -0.70873136,     0.705478248,   -0.70873152, 0.705475767, -0.708726595],
                      [1, 0,            0.00230096915,  0.00153397613,  0.00115049, 0.003834937, -0.000766974859]])
-    
-    
+
+
     ax_pt = numpy.array([[0.06402724,   0.112705124,  0.184663544,  0.369981239,  0.44306164,  0.634069656, 0.715888027],
                          [-0.25902738, -0.307929978, -0.380220576, -0.566243712, -0.63966121, -0.831495933,-0.913690499],
                          [ 0.129626,    0.399976,     0.400210699,  0.331814783,  0.33193396,  0.322245479, 0.322156529]])
-                         
+
     gsj0 = numpy.array(zeros((4,4,len(q)+1)))
     gsj0[:,:,0] = numpy.array([[ 0.70547658, 0.70873324, 0, 0.06402724],
                                [-0.70873324, 0.70547658, 0,-0.25902738],
@@ -163,7 +164,7 @@ def baxter_fk(q):
                                [0.00216686578,  0.705479921,   -0.708726595,    -0.913690499],
                                [-0.999997059,   0.00230096403, -0.000766974859,  0.322156529],
                                [0,              0,              0,               1]])
-                         
+
     gsj0[:,:,7] = numpy.array([[0.00108966904,  0.708726172,    0.705482832,    0.795995603],
                                [0.00216686578,  0.705479921,   -0.708726595,   -0.994166404],
                                [-0.999997059,   0.00230096403, -0.000766974859, 0.322069439],
@@ -193,7 +194,7 @@ def send_to_joint_vals(q):
 	command_msg.mode=JointCommand.POSITION_MODE
 	control_rate = rospy.Rate(100)
 	start = rospy.get_time()
-	
+
     	joint_positions=rospy.wait_for_message("/robot/joint_states",JointState)
 	qc = joint_positions.position[9:16]
 	qc = ([qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6]]) # reorder due to the odd order that q is read in from the arm
@@ -215,7 +216,7 @@ def getpose():
 	command_msg.mode=JointCommand.POSITION_MODE
 	control_rate = rospy.Rate(100)
 	start = rospy.get_time()
-	
+
     	joint_positions=rospy.wait_for_message("/robot/joint_states",JointState)
 	qc = (joint_positions.position[9:16])
 	angles = [qc[2],qc[3],qc[0],qc[1],qc[4],qc[5],qc[6]]
@@ -229,18 +230,18 @@ def getpose():
 	exit = 0
 	listener2=tf.TransformListener()
 
-	#the transformations		
+	#the transformations
 	now=rospy.Time()
 	listener2.waitForTransform("/torso","/right_hand",now,rospy.Duration(1.0))
 	(trans08,rot08)=listener2.lookupTransform("/torso","/right_hand",now)
 
-	# Get 4*4 rotational matrix from quaternion ( 4th colume is [0][0][0][1]) 
+	# Get 4*4 rotational matrix from quaternion ( 4th colume is [0][0][0][1])
 	R08 = transformations.quaternion_matrix(rot08)
         T08 = numpy.vstack((numpy.column_stack((R08[0:3,0:3], numpy.transpose(numpy.array(trans08)))),[0,0,0,1]))
-	return (angles,T08)
+	return (angles, T08)
 
 def Jv(rho,z,on,o):
-    #print "inside Jv =",numpy.add(numpy.transpose([numpy.multiply(rho,numpy.cross(z,numpy.subtract(on,o)))]),numpy.transpose([numpy.multiply(rho-1,z)])) 
+    #print "inside Jv =",numpy.add(numpy.transpose([numpy.multiply(rho,numpy.cross(z,numpy.subtract(on,o)))]),numpy.transpose([numpy.multiply(rho-1,z)]))
     return numpy.add(numpy.transpose([numpy.multiply(rho,numpy.cross(z,numpy.subtract(on,o)))]),numpy.transpose([numpy.multiply(rho-1,z)])) # Jv = z_(i-1)X(O_n - O_(i-1)) for revolute joint, i, and Jv = z_(i-1) for prismatic joint, i.
 
 def Jw(rho,z):
@@ -261,7 +262,7 @@ def calc_Jg(frames):
     rho = numpy.ones(sz[2]) # rho_1...6 values
     J_v = Jv(rho[0], z[:,0],O[:,sz[2]-1],O[:,0])
     J_w = Jw(rho[0], z[:,0])
-        
+
     for i in range(1,sz[2]-1): # calculate the Jacobian column by column
         J_v = numpy.column_stack((J_v, Jv(rho[i], z[:,i],O[:,sz[2]-1],O[:,i])))
         J_w = numpy.column_stack((J_w, Jw(rho[i], z[:,i])))
@@ -270,12 +271,12 @@ def calc_Jg(frames):
 
 def inv_kin(Rot,XYZ,q):
     #control_rate = rospy.Rate(125) # set the robot update rate (i think)
-    Rot[0:3,0:3] = R_norm(Rot[0:3,0:3]) # ensures roundoff error does not lead to improper rotations 
+    Rot[0:3,0:3] = R_norm(Rot[0:3,0:3]) # ensures roundoff error does not lead to improper rotations
 
     # Pull out rotation matrix for target pose
     Rd = Rot
     Pd = XYZ
-    
+
     # setup position convergence radius
     lambda_v = 100
     v_max = 0.05
@@ -301,17 +302,17 @@ def inv_kin(Rot,XYZ,q):
     while (delta_p>eps_p): #or delta_ksi>eps_ksi):
         #T = DH(q, A, ALPHA, D)
         T = baxter_fk(q)
-       
+
         # current rotation
         Rc = T[0:3,0:3,7]
-        
-        # current position		
+
+        # current position
         Pc = T[0:3,3,7]
 
         # current Jacobian and pseudoinversed Jacobian
         Jg = calc_Jg(T)
         Jgp = numpy.linalg.pinv(Jg)
-        
+
         # desired position calc
         Pd_Pc_diff = numpy.subtract(Pd,Pc)
         delta_p = numpy.linalg.norm(Pd_Pc_diff)
@@ -332,99 +333,73 @@ def inv_kin(Rot,XYZ,q):
     #print "Pose Achieved in ", rospy.get_time()-start, " seconds."
     return q
 
+def get_joint_values(arm):
+    posVec = rospy.wait_for_message("/robot/joint_states", JointState).position
+    if 'left' == arm:
+        return posVec[2:8]
+    elif 'right' == arm:
+        return posVec[9:16]
+    else:
+        raise RuntimeError(arm + " is invalid arm!")
+
+def get_trans(arm):
+    listener = tf.TransformListener()
+    now = rospy.Time()
+    listener.waitForTransform("/torso", "/" + arm + "_hand",
+                              now, rospy.Duration(1.0))
+    trans, rot = listener.lookupTransform("/torso", "/" + arm + "_hand", now)
+    rot_4x4 = transformations.quaternion_matrix(rot)
+    t = numpy.vstack((numpy.column_stack((rot_4x4[0:3,0:3],
+                                          numpy.transpose(numpy.array(trans)))),
+                      [0,0,0,1]))
+    return t
+
+def rot_pos(trans):
+    return (trans[0:3,0:3], trans[0:3,3])
+
+def down_to_up(down, up_z):
+    up_trans = down['trans'] * up_z
+    rot, pos = rot_pos(up_trans)
+    up_pos = inv_kin(rot, pos, down['q'])
+    return {
+        'q': up_pos,
+        'trans': up_trans
+    }
+
+# init_pos is the position of baxter at the first key, pressing down, as joints
+# key_delta is a transformation matrix, as is up_z
+def generate_q_for_keys(cur_pos, cur_trans, num_keys, key_delta, up_z, arm):
+    downs = []
+    for i in range(0, num_keys):
+        downs.append({
+            'q': cur_pos,
+            'trans': cur_trans
+        })
+        cur_trans = cur_trans * key_delta
+        rot, pos = rot_pos(cur_trans)
+        cur_pos = inv_kin(rot, pos, cur_pos)
+    ups = map(down_to_up, downs)
+    return (downs, ups)
+
+key_delta_pos = [0, .0762, 0]
+key_delta = util.transform(numpy.eye(3), key_delta_pos)
+up_z_delta_pos = [0, 0, .01]
+up_z_delta = util.transform(numpy.eye(3), up_z_delta_pos)
+
+NUM_KEYS = 8
 
 def main():
-
-	print("Initializing node...\n")
 	rospy.init_node("baxter_kinematics")
-
-        home = [-pi/4,-0.7,0,1.2,0,1.1,0]
-	send_to_joint_vals(home)
-	angles,trans = getpose()
-	Rhome = trans[0:3,0:3]
-	
-	#right_gripper = Gripper('right')
-        #if right_gripper.calibrate(True,5.0):
-        #        print("calibrate")		
-        #        right_gripper.set_moving_force(25)
-        #        right_gripper.set_holding_force(25)
-        #right_gripper.command_position(100)
-
-        XYZhome = [trans[0,3],trans[1,3],trans[2,3]]
-	#print XYZhome
-        #boardheight = XYZhome[2]-0.165
-        #XYZcal = [XYZhome[0],XYZhome[1]-0.05,boardheight]
-	#print XYZcal
-        #print Rhome
-        #Cal = inv_kin(Rhome,XYZcal,home)
-        #send_to_joint_vals(Cal)
-	
-	#send_to_joint_vals(home)
-	
-	XYZdest = [0.5, -.7, 0.16]
-
-
-	Rdes = numpy.array((Rz(numpy.pi/4)))
-	#Rdes = numpy.eye(3)
-	print 'going to dest'
-	Dest = inv_kin(Rhome,XYZdest,home)
-	send_to_joint_vals(Dest)
-	print 'sent to dest?'
-	Destp = Dest
-
-	print(rospy.wait_for_message("/robot/joint_states",JointState))
-	
-	XYZdest = [XYZdest[0]+0,XYZdest[1]+0,XYZdest[2]-0.16]
-	Dest = inv_kin(Rhome,XYZdest,Destp)
-	send_to_joint_vals(Dest)
-	Destp = Dest
-	
-	XYZdest = [XYZdest[0]+0,XYZdest[1]+0.1,XYZdest[2]+0.16]
-	Dest = inv_kin(Rhome,XYZdest,Destp)
-	send_to_joint_vals(Dest)
-	Destp = Dest
-	
-	XYZdest = [XYZdest[0]+0,XYZdest[1]+0,XYZdest[2]-0.16]
-	Dest = inv_kin(Rhome,XYZdest,Destp)
-	send_to_joint_vals(Dest)
-	Destp = Dest
-	
-	XYZdest = [XYZdest[0]+0,XYZdest[1]+0.1,XYZdest[2]+0.16]
-	Dest = inv_kin(Rhome,XYZdest,Destp)
-	send_to_joint_vals(Dest)
-	Destp = Dest
-	
-	XYZdest = [XYZdest[0]+0,XYZdest[1]+0,XYZdest[2]-0.16]
-	Dest = inv_kin(Rhome,XYZdest,Destp)
-	send_to_joint_vals(Dest)
-	Destp = Dest
-	
-	XYZdest = [XYZdest[0]+0,XYZdest[1]+0.1,XYZdest[2]+0.16]
-	Dest = inv_kin(Rhome,XYZdest,Destp)
-	send_to_joint_vals(Dest)
-	Destp = Dest
-
-	XYZdest = [XYZdest[0]+0,XYZdest[1]+0,XYZdest[2]-0.16]
-	Dest = inv_kin(Rhome,XYZdest,Destp)
-	send_to_joint_vals(Dest)
-	Destp = Dest
-	
-	XYZdest = [XYZdest[0]+0,XYZdest[1]+0.1,XYZdest[2]+0.16]
-	Dest = inv_kin(Rhome,XYZdest,Destp)
-	send_to_joint_vals(Dest)
-	Destp = Dest
-	
-	XYZdest = [XYZdest[0]+0,XYZdest[1]+0,XYZdest[2]-0.16]
-	Dest = inv_kin(Rhome,XYZdest,Destp)
-	send_to_joint_vals(Dest)
-	Destp = Dest
-	
-	XYZdest = [XYZdest[0]+0,XYZdest[1]+0.1,XYZdest[2]+0.16]
-	Dest = inv_kin(Rhome,XYZdest,Destp)
-	send_to_joint_vals(Dest)
-	Destp = Dest
-	
+        raw_input("press enter to read joint values and transformation")
+        init_q = get_joint_values('right')
+        init_trans = get_trans('right')
+        key_downs, key_ups = generate_q_for_keys(
+            init_q, init_trans, NUM_KEYS, key_delta, up_z_delta_pos, 'right')
+        raw_input("press enter to begin the program")
+        for i in range(0, NUM_KEYS):
+            send_to_joint_vals(key_downs[i])
+            send_to_joint_vals(key_ups[i])
+        print('bye!')
 
 if __name__ == '__main__':
     main()
-
