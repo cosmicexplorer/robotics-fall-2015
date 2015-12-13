@@ -331,11 +331,18 @@ def inv_kin(Rot,XYZ,q):
         delta_ksi  = numpy.linalg.norm(numpy.subtract(ksi_d, ksi_c))
         ksi_d_dot = numpy.multiply(mag_speed(ksi_d_max, ksi_d_min, delta_ksi, eps_ksi, lambda_ksi), mhat_e)
         x_d_dot = numpy.vstack((Pd_dot,ksi_d_dot))
-        q_dot = list(numpy.array(numpy.transpose(dot(Jgp,x_d_dot))).reshape(-1)) # change the data type so that the command message will accept the new q value
+        q_dot = list(numpy.array(numpy.transpose(dot(Jgp,x_d_dot))).reshape(-1))
+        # change the data type so that the command message will accept the new q
+        # value
+        q_dot = numpy.array((q_dot + util.jointLimitPaper(q, qMin, qMax, angular_tol, Jg, 10)).T)[0]
         q = numpy.add(q, q_dot)#numpy.multiply(0.5,q_dot)
 	#print q
     #print "Pose Achieved in ", rospy.get_time()-start, " seconds."
     return q
+
+angular_tol = .1
+qMax = [.89, 1.047, 3.028, 2.618, 3.059, 2.094, 3.059]
+qMin = [-2.461, -2.147, -3.028, -.052, -3.059, -1.571, -3.059]
 
 def get_joint_values(arm):
     posVec = rospy.wait_for_message("/robot/joint_states", JointState).position
