@@ -36,6 +36,7 @@ from geometry_msgs.msg import (
     Quaternion,
 )
 import util
+from baxter_pykdl import baxter_kinematics
 
 def C(theta):
     return math.cos(theta)
@@ -273,6 +274,7 @@ def calc_Jg(frames):
     return J_g
 
 def inv_kin(Rot,XYZ,q):
+    rkin = baxter_kinematics('right')
     #control_rate = rospy.Rate(125) # set the robot update rate (i think)
     Rot[0:3,0:3] = R_norm(Rot[0:3,0:3]) # ensures roundoff error does not lead to improper rotations
 
@@ -306,6 +308,11 @@ def inv_kin(Rot,XYZ,q):
     while (delta_p>eps_p): #or delta_ksi>eps_ksi):
         #T = DH(q, A, ALPHA, D)
         T = baxter_fk(q)
+        print('--forward kinematics--')
+        print('custom:')
+        print(T[:,:,7])
+        print('pykdl:')
+        print(rkin.forward_position_kinematics())
 
         # current rotation
         Rc = T[0:3,0:3,7]
@@ -315,6 +322,11 @@ def inv_kin(Rot,XYZ,q):
 
         # current Jacobian and pseudoinversed Jacobian
         Jg = calc_Jg(T)
+        print('--jacobian--')
+        print('custom:')
+        print(Jg)
+        print('pykdl:')
+        print(rkin.jacobian())
         Jgp = numpy.linalg.pinv(Jg)
 
         # desired position calc
