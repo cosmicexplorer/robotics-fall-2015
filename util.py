@@ -252,7 +252,7 @@ def jointLimitPaper(theta, thetamin, thetamax,alpha,J,k):
             c = thetamax[i] - alpha
             dp2_dtheta = 2*(theta[i]-c)/(ei**2)
         dp_dtheta.append(dp1_dtheta+dp2_dtheta)
-    pinv_times_J = numpy.linalg.pinv(J)*J
+    pinv_times_J = numpy.matrix(numpy.linalg.pinv(J))*numpy.matrix(J)
     dp_dtheta_vect = numpy.matrix([dp_dtheta]).T
     return (numpy.identity(pinv_times_J.shape[0])-pinv_times_J)*(-k*dp_dtheta_vect)
 

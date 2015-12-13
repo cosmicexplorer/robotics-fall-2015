@@ -273,6 +273,14 @@ def calc_Jg(frames):
     J_g = Jg(J_v,J_w)
     return J_g
 
+def getT(rkin):
+    forward = rkin.forward_position_kinematics()
+    quatangles = forward[3:]
+    rot = util.quat2rot(quatangles[0], quatangles[1], quatangles[2],
+                        quatangles[3])
+    pos = numpy.matrix(forward[:3]).T
+    return util.transformation(rot, pos) 
+
 def inv_kin(Rot,XYZ,q):
     rkin = baxter_kinematics('right')
     #control_rate = rospy.Rate(125) # set the robot update rate (i think)
@@ -308,11 +316,11 @@ def inv_kin(Rot,XYZ,q):
     while (delta_p>eps_p): #or delta_ksi>eps_ksi):
         #T = DH(q, A, ALPHA, D)
         T = baxter_fk(q)
-        print('--forward kinematics--')
-        print('custom:')
-        print(T[:,:,7])
-        print('pykdl:')
-        print(rkin.forward_position_kinematics())
+        # print('--forward kinematics--')
+        # print('custom:')
+        # print(T[:,:,7])
+        # print('pykdl:')
+        # print(getT(rkin))
 
         # current rotation
         Rc = T[0:3,0:3,7]
@@ -322,11 +330,11 @@ def inv_kin(Rot,XYZ,q):
 
         # current Jacobian and pseudoinversed Jacobian
         Jg = calc_Jg(T)
-        print('--jacobian--')
-        print('custom:')
-        print(Jg)
-        print('pykdl:')
-        print(rkin.jacobian())
+        # print('--jacobian--')
+        # print('custom:')
+        # print(Jg)
+        # print('pykdl:')
+        # print(rkin.jacobian())
         Jgp = numpy.linalg.pinv(Jg)
 
         # desired position calc
@@ -346,7 +354,7 @@ def inv_kin(Rot,XYZ,q):
         q_dot = list(numpy.array(numpy.transpose(dot(Jgp,x_d_dot))).reshape(-1))
         # change the data type so that the command message will accept the new q
         # value
-        q_dot = numpy.array((q_dot + util.jointLimitPaper(q, qMin, qMax, angular_tol, Jg, 10)).T)[0]
+        # q_dot = numpy.array((q_dot + util.jointLimitPaper(q, qMin, qMax, angular_tol, Jg, 10)).T)[0]
         q = numpy.add(q, q_dot)#numpy.multiply(0.5,q_dot)
 	#print q
     #print "Pose Achieved in ", rospy.get_time()-start, " seconds."
@@ -425,8 +433,11 @@ up_z_delta = util.transformation(numpy.eye(3), up_z_delta_pos)
 
 NUM_KEYS = 8
 
+q_that_works = (1.5398423470391664, -0.26798563793665303, -0.40636594621582162, 0.985367798980743, -2.5794219373872669, -1.0306605857935129, 0.40078702801300597)
+
 def main():
 	rospy.init_node("baxter_kinematics")
+        send_to_joint_vals(q_that_works)
         raw_input("press enter to read joint values and transformation")
         init_q = get_joint_values('right')
         init_trans = get_trans('right')
@@ -435,12 +446,14 @@ def main():
         key_downs, key_ups = generate_q_for_keys(
             init_q, init_trans, NUM_KEYS, key_delta, up_z_delta, 'right')
         raw_input("press enter to begin the program")
-	send_to_joint_vals(key_ups[0]['q'])
-        raw_input('')
-        send_to_joint_vals(key_ups[4]['q'])
-        raw_input('')
-        send_to_joint_vals(key_downs[4]['q'])
-        # for i in range(0, NUM_KEYS):
+        for i in range(0, NUM_KEYS):
+		send_to_joint_vals(key_ups[i]['q'])
+		raw_input('')
+                send_to_joint_vals(key_downs[i]['q'])
+                raw_input('')
+        print(key_ups[0]['q'])
+
+	# for i in range(0, NUM_KEYS):
         #     print('key downs/ups')
         #     print(key_downs[i])
         #     print(key_ups[i])
