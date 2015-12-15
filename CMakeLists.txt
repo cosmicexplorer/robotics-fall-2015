@@ -7,12 +7,8 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   message_generation
-  sensor_msgs
-  control_msgs
-  cv_bridge
   baxter_core_msgs
   baxter_interface
-  #OpenCV
 )
 
 ## System dependencies are found with CMake's conventions
@@ -59,7 +55,7 @@ generate_messages(
 catkin_package(
   #INCLUDE_DIRS include
   LIBRARIES visual_servo
-  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime sensor_msgs control_msgs cv_bridge baxter_core_msgs baxter_interface
+  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime baxter_core_msgs baxter_interface
   DEPENDS system_lib
 )
 
@@ -89,7 +85,7 @@ catkin_package(
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-install(PROGRAMS 
+install(PROGRAMS
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -113,4 +109,3 @@ install(PROGRAMS
 #   # myfile2
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
-

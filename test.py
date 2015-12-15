@@ -14,10 +14,6 @@ from std_msgs.msg import (
     Float64,
 )
 
-from sensor_msgs.msg import (
-    JointState
-)
-
 from baxter_core_msgs.msg import(
     JointCommand,
 )
@@ -63,7 +59,7 @@ def runResolvedRates(rkin, publish_fun, final, speed, freq, tolerance, alpha, qM
         alpha, tolerance,
         lambda: rkin.jacobian(),
         rospy.Rate(freq),
-        lambda: numpy.matrix([rospy.wait_for_message("/robot/joint_states", 
+        lambda: numpy.matrix([rospy.wait_for_message("/robot/joint_states",
                                        JointState).position[9:16]]).T,
         lambda: getT(rkin),
         getPosOriVector,
@@ -78,7 +74,7 @@ def getT(rkin):
     rot = util.quat2rot(quatangles[0], quatangles[1], quatangles[2],
                         quatangles[3])
     pos = numpy.matrix(forward[:3]).T
-    return util.transformation(rot, pos) 
+    return util.transformation(rot, pos)
 
 # get position/orientation vector (6x1)
 def getPosOriVector(T):
@@ -128,10 +124,10 @@ def main():
     freq = 100
     tolerance = .03
     #runResolvedRates(
-    #   rkin, 
+    #   rkin,
     #   lambda q: publish_joints(pub_joint_cmd, command_msg, q),
     #   final, speed, freq, tolerance, alpha, joint_maxes, joint_mins)
-    q = numpy.matrix([rospy.wait_for_message("/robot/joint_states", 
+    q = numpy.matrix([rospy.wait_for_message("/robot/joint_states",
                                        JointState).position[9:16]]).T,
     pi = numpy.pi
     Tdes = [[numpy.cos(pi/2), 0, numpy.sin(pi/2), 1],[0, 1, 0, 0],[-numpy.sin(pi/2), 0, numpy.cos(pi/2), 0],[0, 0, 0, 1]]
@@ -140,7 +136,7 @@ def main():
     #Tdes = util.transformation(util.rotY(numpy.pi/2),numpy.matrix([[.8],[0],[0]]))
     print Tdes
     q = demo.inv_kin2()
-    #send_to_joint_vals(q)	
+    #send_to_joint_vals(q)
     print q
 # assumes that pub_joint_cmd and cmd_msg are appropriately constructed
 def publish_joints(cmd, cmd_msg, q):
