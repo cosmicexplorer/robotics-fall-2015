@@ -13,6 +13,7 @@ import sys
 import tf
 import math
 import time
+import convert_notes
 from numpy import *
 from numpy.linalg import *
 from scipy import linalg
@@ -37,6 +38,7 @@ from geometry_msgs.msg import (
 )
 import util
 from baxter_pykdl import baxter_kinematics
+import time
 
 def C(theta):
     return math.cos(theta)
@@ -464,29 +466,29 @@ def get_trans(arm):
 def rot_pos(trans):
     return (trans[0:3,0:3], trans[0:3,3])
 
-def down_to_up(down, up_z):
-    up_trans = down['trans'] * up_z
-    print('down[\'trans\']')
+def mid_to_up_or_down(down, trans):
+    new_trans = down['trans'] * trans
+    print('mid[\'trans\']')
     print(down['trans'])
-    print('up_z')
-    print(up_z)
-    print('up_trans')
-    print(up_trans)
-    rot, pos = rot_pos(up_trans)
-    up_pos = inv_kin(numpy.array(rot), numpy.array(pos.T)[0], down['q'])
+    print('trans')
+    print(trans)
+    print('new_trans')
+    print(new_trans)
+    rot, pos = rot_pos(new_trans)
+    new_pos = inv_kin(numpy.array(rot), numpy.array(pos.T)[0], down['q'])
     return {
-        'q': tuple(up_pos),
-        'trans': numpy.matrix(up_trans)
+        'q': tuple(new_pos),
+        'trans': numpy.matrix(new_trans)
     }
 
 # init_pos is the position of baxter at the first key, pressing down, as joints
 # key_delta is a transformation matrix, as is up_z
-def generate_q_for_keys(cur_pos, cur_trans, num_keys, key_delta, up_z, arm):
-    downs = []
+def generate_q_for_keys(cur_pos, cur_trans, num_keys, key_delta, up_z, down_z, arm):
+    mids = []
     cur_trans = numpy.matrix(cur_trans)
     key_delta = numpy.matrix(key_delta)
     for i in range(0, num_keys):
-        downs.append({
+        mids.append({
             'q': tuple(cur_pos),
             'trans': numpy.matrix(cur_trans)
         })
@@ -495,45 +497,61 @@ def generate_q_for_keys(cur_pos, cur_trans, num_keys, key_delta, up_z, arm):
         cur_trans = cur_trans * key_delta
         rot, pos = rot_pos(numpy.array(cur_trans))
         cur_pos = inv_kin(rot, pos, cur_pos)
-    ups = map(lambda el: down_to_up(el, up_z), downs)
-    return (downs, ups)
+    ups = map(lambda el: mid_to_up_or_down(el, up_z), mids)
+    downs = map(lambda el: mid_to_up_or_down(el, down_z), mids)
+    return (mids, downs, ups)
 
 key_delta_pos = [0, .0762, 0]
 # key_delta_pos = [0, .03, 0]
 key_delta = util.transformation(numpy.eye(3), key_delta_pos)
 up_z_delta_pos = [0, 0, -.05]
 up_z_delta = util.transformation(numpy.eye(3), up_z_delta_pos)
+down_z_delta_pos = [0, 0, .01]
+down_z_delta = util.transformation(numpy.eye(3), down_z_delta_pos)
 
 NUM_KEYS = 8
 
 q_that_works = (1.5398423470391664, -0.26798563793665303, -0.40636594621582162, 0.985367798980743, -2.5794219373872669, -1.0306605857935129, 0.40078702801300597)
 
+def move_to_key(from_key, to_key, key_up_qs, key_down_qs):
+    send_to_joint_vals(key_up_qs[from_key])
+    send_to_joint_vals(key_up_qs[to_key])
+    time.sleep(convert_notes.sleep_time)
+    send_to_joint_vals(key_down_qs[to_key])
+
+def step_off_key(from_key, key_up_qs):
+    send_to_joint_vals(key_up_qs[from_key])
+
+def run_song(songfile, cur_key, key_up_qs, key_down_qs):
+    movements_array = parse_lines_of_file(songfile)
+    control_rate = rospy.Rate(1./convert_notes.smallest_quant)
+    for action in movements_array:
+        if action['type'] == 'move-and-press':
+            move_to_key(cur_key, action['num'] - 1, key_up_qs, key_down_qs)
+            cur_key = action['num'] - 1
+        elif action['type'] == 'off':
+            step_off_key(cur_key, key_up_qs)
+        control_rate.sleep()
+
+song_file = 'song.txt'
+initial_key = 0
+
 def main():
     rospy.init_node("baxter_kinematics")
-    send_to_joint_vals(q_that_works)
+    # send_to_joint_vals(q_that_works)
     raw_input("press enter to read joint values and transformation")
     init_q = get_joint_values('right')
     init_trans = get_trans('right')
     print(init_q)
     print(init_trans)
-    key_downs, key_ups = generate_q_for_keys(
-        init_q, init_trans, NUM_KEYS, key_delta, up_z_delta, 'right')
+    key_mids, key_downs, key_ups = generate_q_for_keys(
+        init_q, init_trans, NUM_KEYS, key_delta, up_z_delta, down_z_delta, 'right')
     raw_input("press enter to begin the program")
-    for i in range(0, NUM_KEYS):
-        send_to_joint_vals(key_ups[i]['q'])
-        raw_input('')
-        send_to_joint_vals(key_downs[i]['q'])
-        raw_input('')
-    print(key_ups[0]['q'])
-
-    # for i in range(0, NUM_KEYS):
-    #     print('key downs/ups')
-    #     print(key_downs[i])
-    #     print(key_ups[i])
-    #     control_rate.sleep()
-    #     send_to_joint_vals(key_downs[i]['q'])
-    #     control_rate.sleep()
-    #     send_to_joint_vals(key_ups[i]['q'])
+    send_to_joint_vals(key_ups[0]['q'])
+    run_song(song_file, 0,
+             map(lambda up: up['q'], key_ups),
+             map(lambda down: down['q'], key_downs))
+    send_to_joint_vals(key_ups[0]['q'])
     print('bye!')
 
 if __name__ == '__main__':
