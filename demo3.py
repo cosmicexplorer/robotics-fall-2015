@@ -262,10 +262,14 @@ def baxter_fk_left(q):
     #H[:,:,6] = dot(H[:,:,6],gsj0[:,:,7])
     return H
 
-def send_to_joint_vals(q):
-    pub_joint_cmd=rospy.Publisher('/robot/limb/right/joint_command',JointCommand)
+def generate_joint_names_for_arm(arm):
+    exts = ['s0','s1','e0','e1','w0','w1','w2']
+    return map(lambda ext: arm + '_' + ext, exts)
+
+def send_to_joint_vals(q, arm='right'):
+    pub_joint_cmd=rospy.Publisher('/robot/limb/' + arm + '/joint_command',JointCommand)
     command_msg=JointCommand()
-    command_msg.names=['right_s0', 'right_s1', 'right_e0', 'right_e1',  'right_w0', 'right_w1', 'right_w2']
+    command_msg.names = generate_joint_names_for_arm(arm)
     command_msg.command=q
     command_msg.mode=JointCommand.POSITION_MODE
     control_rate = rospy.Rate(100)
@@ -285,6 +289,7 @@ def send_to_joint_vals(q):
         qc = (joint_positions.position[9:16])
         qc = (qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6])
         print "joint error = ", numpy.linalg.norm(numpy.subtract(q,qc))
+        print((q,qc))
     print("In home pose")
     return (qc[2], qc[3], qc[0], qc[1], qc[4], qc[5], qc[6])
 
@@ -357,7 +362,6 @@ def getT(rkin):
     return util.transformation(rot, pos)
 
 def inv_kin(Rot,XYZ,q):
-    rkin = baxter_kinematics('right')
     #control_rate = rospy.Rate(125) # set the robot update rate (i think)
     Rot[0:3,0:3] = R_norm(Rot[0:3,0:3]) # ensures roundoff error does not lead to improper rotations
 
@@ -506,12 +510,10 @@ key_delta_pos = [0, .0762, 0]
 key_delta = util.transformation(numpy.eye(3), key_delta_pos)
 up_z_delta_pos = [0, 0, -.05]
 up_z_delta = util.transformation(numpy.eye(3), up_z_delta_pos)
-down_z_delta_pos = [0, 0, .01]
+down_z_delta_pos = [0, 0, .015]
 down_z_delta = util.transformation(numpy.eye(3), down_z_delta_pos)
 
 NUM_KEYS = 8
-
-q_that_works = (1.5398423470391664, -0.26798563793665303, -0.40636594621582162, 0.985367798980743, -2.5794219373872669, -1.0306605857935129, 0.40078702801300597)
 
 def move_to_key(from_key, to_key, key_up_qs, key_down_qs):
     send_to_joint_vals(key_up_qs[from_key])
@@ -523,7 +525,7 @@ def step_off_key(from_key, key_up_qs):
     send_to_joint_vals(key_up_qs[from_key])
 
 def run_song(songfile, cur_key, key_up_qs, key_down_qs):
-    movements_array = parse_lines_of_file(songfile)
+    movements_array = convert_notes.parse_file(songfile)
     control_rate = rospy.Rate(1./convert_notes.smallest_quant)
     for action in movements_array:
         if action['type'] == 'move-and-press':
@@ -533,25 +535,47 @@ def run_song(songfile, cur_key, key_up_qs, key_down_qs):
             step_off_key(cur_key, key_up_qs)
         control_rate.sleep()
 
-song_file = 'song.txt'
+def flip_center_range(x, minVal, maxVal):
+    diff = x - minVal
+    return maxVal - diff
+
+def right_to_left(q):
+    ql = list(q)
+    ql[0] = flip_center_range(ql[0], qMin[0], qMax[0])
+    ql[2] = flip_center_range(ql[2], qMin[2], qMax[2])
+    ql[4] = flip_center_range(ql[4], qMin[4], qMax[4])
+    ql[6] = flip_center_range(ql[6], qMin[6], qMax[6])
+    return ql
+
 initial_key = 0
+
+# q_that_works = (1.4028254289184572, -0.3551165519897461, -0.24927187774658205, 1.3506700821899416, -2.895388733825684, -0.600169982574463, 0.26077673364257814)
+# q_that_works = (1.368694356427002, -0.39806801400146485, -0.194432064642334, 1.361024452496338, -2.9935635041381836, -0.570257357244873, 0.24620391617431642)
+q_that_works = (1.251728321484375, -0.36240296072387695, -0.11581554935302735, 1.30618463939209, -2.956364470074463, -0.6404369782104493, 0.15148060263061525)
+# q_left = (-1.251728321484375, -0.36240296072387695, 0.11581554935302735, 1.30618463939209, 2.956364470074463, -0.6404369782104493, -0.15148060263061525)
 
 def main():
     rospy.init_node("baxter_kinematics")
-    # send_to_joint_vals(q_that_works)
+    send_to_joint_vals(q_that_works)
     raw_input("press enter to read joint values and transformation")
+    send_to_joint_vals(q_that_works)
     init_q = get_joint_values('right')
     init_trans = get_trans('right')
     print(init_q)
     print(init_trans)
     key_mids, key_downs, key_ups = generate_q_for_keys(
-        init_q, init_trans, NUM_KEYS, key_delta, up_z_delta, down_z_delta, 'right')
-    raw_input("press enter to begin the program")
-    send_to_joint_vals(key_ups[0]['q'])
-    run_song(song_file, 0,
+        init_q, init_trans, NUM_KEYS, key_delta, up_z_delta,
+        down_z_delta, 'right')
+    songfile = raw_input("specify song file: ")
+    if songfile == '':
+        songfile = 'jingle.txt'
+    with open('out_q','w') as f:
+        f.write(repr(key_mids[0]['q']) + '\n')
+    send_to_joint_vals(key_ups[initial_key]['q'])
+    run_song('pianist/' + songfile, initial_key,
              map(lambda up: up['q'], key_ups),
              map(lambda down: down['q'], key_downs))
-    send_to_joint_vals(key_ups[0]['q'])
+    print(key_mids[0]['q'])
     print('bye!')
 
 if __name__ == '__main__':

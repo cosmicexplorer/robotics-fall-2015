@@ -18,12 +18,16 @@ sleep_time = .7                 # seconds
 
 def parse_file(fname):
     with open(fname, 'r') as f:
-        parse_lines_of_file(f)
+        print('file:')
+        print(fname)
+        return parse_lines_of_file(f)
 
 def parse_lines_of_file(f):
     res = []
+    print('parsing file:')
     for x in f:
-        if len(x) == 0: continue
+        print(x)
+        if re.match('^\\s*$', x): continue
         elif re.search('^rest:',x):
             res.append({'type': 'off'})
         else:
