@@ -1,4 +1,4 @@
-# notes are specified as (note|rest):duration(:key)?
+# notes are specified as (<note>|rest):duration
 # duration must be an integer multiple of smallest_quant
 
 import re
