@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
 import rospy
-import cv2
-from cv_bridge import CvBridge, CvBridgeError
-from sensor_msgs.msg import Image
 import numpy
 from numpy import matrix
 from baxter_interface import CameraController
@@ -14,30 +11,18 @@ import tf
 import math
 import time
 import convert_notes
+import numpy
 from numpy import *
 from numpy.linalg import *
 from scipy import linalg
-from pymatbridge import Matlab
-from baxter_pykdl import baxter_kinematics
-from baxter_interface import Gripper
 from tf import transformations
-from std_msgs.msg import (
-    Float64,
-)
 from sensor_msgs.msg import (
     JointState
 )
 from baxter_core_msgs.msg import(
     JointCommand,
 )
-from geometry_msgs.msg import (
-    PoseStamped,
-    Pose,
-    Point,
-    Quaternion,
-)
 import util
-from baxter_pykdl import baxter_kinematics
 import time
 
 def C(theta):
@@ -46,18 +31,6 @@ def C(theta):
 def S(theta):
     return math.sin(theta)
 
-def Rx(th):
-# Rotation matrix about the y-axis
-    return [[1,0,0],[0,C(th),-S(th)],[0,S(th),C(th)]]
-
-def Ry(th):
-# Rotation matrix about the y-axis
-    return [[C(th),0,S(th)],[0,1,0],[-S(th),0,C(th)]]
-
-def Rz(th):
-# Rotation matrix about the z-axis
-    return [[C(th),-S(th),0],[S(th),C(th),0],[0,0,1]]
-
 def R_norm(R):
     aa = -numpy.cross((R[0,2],R[1,2],R[2,2]), (R[0,1],R[1,1],R[2,1]))
     bb = numpy.cross((R[0,2],R[1,2],R[2,2]), aa)
@@ -65,13 +38,6 @@ def R_norm(R):
     bb = numpy.multiply(1/numpy.linalg.norm(bb), bb)
     cc = numpy.multiply(1/numpy.linalg.norm((R[0,2],R[1,2],R[2,2])), (R[0,2],R[1,2],R[2,2]))
     return numpy.column_stack((numpy.transpose(aa),numpy.transpose(bb), numpy.transpose(cc)))
-
-def R2quaternion(R):
-    eta = math.sqrt(R[0][0]+R[1][1]+R[2][2]+1)/2
-    epsi = numpy.sign(R[2][1] - R[1][2])*math.sqrt(R[0][0] - R[1][1] - R[2][2] + 1)/2
-    epsj = numpy.sign(R[0][2] - R[2][0])*math.sqrt(R[1][1] - R[0][0] - R[2][2] + 1)/2
-    epsk = numpy.sign(R[1][0] - R[0][1])*math.sqrt(R[2][2] - R[1][1] - R[0][0] + 1)/2
-    return [epsi, epsj, epsk, eta] # note the format is [i, j, k, eta]
 
 def R2rpy(R):
     alpha = math.atan2(R[1,0], R[0,0]) # rot x (torso)
@@ -189,79 +155,6 @@ def baxter_fk(q):
     #H[:,:,6] = dot(H[:,:,6],gsj0[:,:,7])
     return H
 
-def baxter_fk_left(q):
-    w = numpy.array([[0, -0.708733236,  -0.705474709,    -0.708729912,    -0.70547736, -0.708723667,  -0.705482832],
-                     [0, 0.705476577, -0.70873136,     0.705478248,   -0.70873152, 0.705475767, -0.708726595],
-                     [-1, 0,            -0.00230096915,  -0.00153397613,  -0.00115049, -0.003834937, -0.000766974859]])
-
-
-    ax_pt = numpy.array([[0.06402724,   0.112705124,  0.184663544,  0.369981239,  0.44306164,  0.634069656, 0.715888027],
-                         [0.25902738, 0.307929978, 0.380220576, 0.566243712, 0.63966121, 0.831495933,0.913690499],
-                         [ 0.129626,    0.399976,     0.400210699,  0.331814783,  0.33193396,  0.322245479, 0.322156529]])
-
-    gsj0 = numpy.array(zeros((4,4,len(q)+1)))
-    gsj0[:,:,0] = numpy.array([[ 0.70547658, 0.70873324, 0, 0.06402724],
-                               [-0.70873324, 0.70547658, 0, 0.25902738],
-                               [ 0,          0,          1, 0.129626],
-                               [ 0,          0,          0, 1]])
-
-
-    gsj0[:,:,1] = numpy.array([[ 0.705474709,   0.00162327984,  0.708733236,  0.112705124],
-                               [-0.70873136,   -0.00163077331,  0.705476577,  0.307929978],
-                               [ 0.00230096915,-0.999997353,    0,            0.399976],
-                               [ 0,             0,              0,            1]])
-
-
-    gsj0[:,:,2] = numpy.array([[ 0.00271046068,   0.708729912,   0.705474709,    0.184663544],
-                               [-0.000548584302,  0.705478248,  -0.70873136,     0.380220576],
-                               [-0.999996176,     0.00153397613, 0.00230096915,  0.400210699],
-                               [ 0,               0,             0,              1]])
-
-
-    gsj0[:,:,3] = numpy.array([[0.705477361,   0.00189882057,   0.708729912,   0.369981239],
-                               [-0.708731522,  0.000266801104,  0.705478248,   0.566243712],
-                               [0.00115048669,-0.999998162,     0.00153397613, 0.331814783],
-                               [0,             0,               0,             1]])
-
-
-    gsj0[:,:,4] = numpy.array([[0.00352958,   0.70872367,  0.70547736,  0.44306164],
-                               [0.00189008,   0.70547577, -0.70873152,  0.63966121],
-                               [-0.99999198,  0.00383494,  0.00115049,  0.33193396],
-                               [0,            0,           0,           1]])
-
-
-    gsj0[:,:,5] = numpy.array([[0.705482832,      0.00217683966,  0.708723667,  0.634069656],
-                               [-0.708726595,     0.00324905545,  0.705475767, 0.831495933],
-                               [-0.000766974864, -0.999992352,    0.003834937, 0.322245479],
-                               [0,                0,              0,           1]])
-
-
-    gsj0[:,:,6] = numpy.array([[0.00108966904,  0.708726172,    0.705482832,     0.715888027],
-                               [0.00216686578,  0.705479921,   -0.708726595,     0.913690499],
-                               [-0.999997059,   0.00230096403, -0.000766974859,  0.322156529],
-                               [0,              0,              0,               1]])
-
-    gsj0[:,:,7] = numpy.array([[0.00108966904,  0.708726172,    0.705482832,    0.795995603],
-                               [0.00216686578,  0.705479921,   -0.708726595,    0.994166404],
-                               [-0.999997059,   0.00230096403, -0.000766974859, 0.322069439],
-                               [0,              0,              0,              1]])
-    sz = numpy.shape(w)
-    xi = numpy.matrix(numpy.zeros((6,len(q))))
-    H = numpy.zeros((4,4,len(q)+1))
-    xi[:,0] = xi_rev(w[:,0],ax_pt[:,0])
-    H[:,:,0] = linalg.expm(numpy.multiply(q[0],hat(xi[:,0])))
-    for i in xrange(1, sz[1]):
-        xi[:,i] = xi_rev(w[:,i],ax_pt[:,i])
-        H[:,:,i] = dot(H[:,:,i-1],linalg.expm(numpy.multiply(q[i],hat(xi[:,i]))))
-
-    H[:,:,7] = dot(H[:,:,6],gsj0[:,:,7])
-
-    for i in xrange(0,sz[1]):
-        H[:,:,i] = dot(H[:,:,i], gsj0[:,:,i])
-
-    #H[:,:,6] = dot(H[:,:,6],gsj0[:,:,7])
-    return H
-
 def generate_joint_names_for_arm(arm):
     exts = ['s0','s1','e0','e1','w0','w1','w2']
     return map(lambda ext: arm + '_' + ext, exts)
@@ -353,23 +246,12 @@ def calc_Jg(frames):
     J_g = Jg(J_v,J_w)
     return J_g
 
-def getT(rkin):
-    forward = rkin.forward_position_kinematics()
-    quatangles = forward[3:]
-    rot = util.quat2rot(quatangles[0], quatangles[1], quatangles[2],
-                        quatangles[3])
-    pos = numpy.matrix(forward[:3]).T
-    return util.transformation(rot, pos)
-
 def inv_kin(Rot,XYZ,q):
-    #control_rate = rospy.Rate(125) # set the robot update rate (i think)
-    Rot[0:3,0:3] = R_norm(Rot[0:3,0:3]) # ensures roundoff error does not lead to improper rotations
+    Rot[0:3,0:3] = R_norm(Rot[0:3,0:3])
 
     # Pull out rotation matrix for target pose
     Rd = Rot
     Pd = XYZ
-
-    # setup position convergence radiusor =  0.249222939268
 
     lambda_v = 100
     v_max = 0.05
@@ -378,29 +260,16 @@ def inv_kin(Rot,XYZ,q):
     eps_p = 0.005
     eta_p = lambda_v*eps_p
 
-    # end pos setup
-    # setup desired angle conv rad
-    ksi_d = R2rpy(Rd) # Pull out desired roll pitch and yaw
-    #print "ksi_d =", ksi_d
+    ksi_d = R2rpy(Rd)
     eps_ksi = 0.1
     lambda_ksi = 10
     ksi_d_max = 0.5
     ksi_d_min = 0.01
     delta_ksi = 1
     eta_ksi = lambda_ksi*eps_ksi
-    #print "eps_ksi =", eps_ksi
-    #print "eta_ksi =", eta_ksi
-    # end angle setup
     start=rospy.get_time()
-    while (delta_p>eps_p): #or delta_ksi>eps_ksi):
-        #T = DH(q, A, ALPHA, D)
+    while (delta_p>eps_p):
         T = baxter_fk(q)
-        # print('--forward kinematics--')
-        # print('custom:')
-        # print(T[:,:,7])
-        # print('pykdl:')
-        # print(getT(rkin))
-
         # current rotation
         Rc = T[0:3,0:3,7]
 
@@ -409,11 +278,6 @@ def inv_kin(Rot,XYZ,q):
 
         # current Jacobian and pseudoinversed Jacobian
         Jg = calc_Jg(T)
-        # print('--jacobian--')
-        # print('custom:')
-        # print(Jg)
-        # print('pykdl:')
-        # print(rkin.jacobian())
         Jgp = numpy.linalg.pinv(Jg)
 
         # desired position calc
@@ -433,10 +297,7 @@ def inv_kin(Rot,XYZ,q):
         q_dot = list(numpy.array(numpy.transpose(dot(Jgp,x_d_dot))).reshape(-1))
         # change the data type so that the command message will accept the new q
         # value
-        # q_dot = numpy.array((q_dot + util.jointLimitPaper(q, qMin, qMax, angular_tol, Jg, 10)).T)[0]
-        q = numpy.add(q, q_dot)#numpy.multiply(0.5,q_dot)
-    #print q
-    #print "Pose Achieved in ", rospy.get_time()-start, " seconds."
+        q = numpy.add(q, q_dot)
     return q
 
 angular_tol = .1
@@ -535,30 +396,11 @@ def run_song(songfile, cur_key, key_up_qs, key_down_qs):
             step_off_key(cur_key, key_up_qs)
         control_rate.sleep()
 
-def flip_center_range(x, minVal, maxVal):
-    diff = x - minVal
-    return maxVal - diff
-
-def right_to_left(q):
-    ql = list(q)
-    ql[0] = flip_center_range(ql[0], qMin[0], qMax[0])
-    ql[2] = flip_center_range(ql[2], qMin[2], qMax[2])
-    ql[4] = flip_center_range(ql[4], qMin[4], qMax[4])
-    ql[6] = flip_center_range(ql[6], qMin[6], qMax[6])
-    return ql
-
 initial_key = 0
-
-# q_that_works = (1.4028254289184572, -0.3551165519897461, -0.24927187774658205, 1.3506700821899416, -2.895388733825684, -0.600169982574463, 0.26077673364257814)
-# q_that_works = (1.368694356427002, -0.39806801400146485, -0.194432064642334, 1.361024452496338, -2.9935635041381836, -0.570257357244873, 0.24620391617431642)
-q_that_works = (1.251728321484375, -0.36240296072387695, -0.11581554935302735, 1.30618463939209, -2.956364470074463, -0.6404369782104493, 0.15148060263061525)
-# q_left = (-1.251728321484375, -0.36240296072387695, 0.11581554935302735, 1.30618463939209, 2.956364470074463, -0.6404369782104493, -0.15148060263061525)
 
 def main():
     rospy.init_node("baxter_kinematics")
-    send_to_joint_vals(q_that_works)
     raw_input("press enter to read joint values and transformation")
-    send_to_joint_vals(q_that_works)
     init_q = get_joint_values('right')
     init_trans = get_trans('right')
     print(init_q)

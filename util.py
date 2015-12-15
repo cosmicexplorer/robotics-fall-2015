@@ -50,13 +50,13 @@ def resolvedRatesorig(alpha, tol, getJacobian, waiter, angles_get, getT, posori_
 
     while numpy.linalg.norm(x_err) > tol:
 	if numpy.linalg.norm(x_err[0:3]) < tol:
-		v_des[0:3,0]=0     
+		v_des[0:3,0]=0
 	g_inv = invT(T)
         g_d = posOriToTransformMat(x0 + v_des * t)
         p_cur_err = transformMatToPosOri(logtr(g_inv * g_d))
         J = getJacobian()
         # FIXME: v_des is 6x1, p_cur_err is 4x4 (from logtr, which calls
-        # hat6). this is a problem. 
+        # hat6). this is a problem.
         q_dot = numpy.linalg.pinv(J) * (v_des + alpha * p_cur_err)
         # TODO: call correction function here to modify q_dot, if applicable
         q = angles_get() + q_dot * dt
@@ -69,7 +69,7 @@ def resolvedRatesorig(alpha, tol, getJacobian, waiter, angles_get, getT, posori_
         x_err = x_des - x_cur
 
 def resolvedRates(alpha, tol, getJacobian, waiter, angles_get, getT, posori_get, publish_fun, x_des, speed, dt):
-    
+
     waiter.sleep()              # start off sleeping
     test = True
     q = angles_get()
@@ -90,7 +90,7 @@ def resolvedRates(alpha, tol, getJacobian, waiter, angles_get, getT, posori_get,
 	npos_err
     	# need to tune these constants
     	v = 0.1*pos_err
-        
+
 
     	R_cur = T[0:3,0:3]
     	# hardcoded in now for flat orientation
@@ -103,7 +103,7 @@ def resolvedRates(alpha, tol, getJacobian, waiter, angles_get, getT, posori_get,
     	w = 0.1*k*rot_err
 	w = numpy.matlib.zeros((3,1))
 	nrot_err = tol
-    
+
 	if (npos_err>tol) and (nrot_err>tol):
 		donothing = 0
 		print('hi')
@@ -115,7 +115,7 @@ def resolvedRates(alpha, tol, getJacobian, waiter, angles_get, getT, posori_get,
 		w = numpy.matlib.zeros((3,1))
 		v = numpy.matlib.zeros((3,1))
 		test = False
-        
+
 	J = getJacobian()
 	#print J
 	#pinv = numpy.transpose(J)*(J*numpy.transpose(J)+0.01*numpy.eye(6,6))**(-1)
@@ -303,4 +303,3 @@ def rotZ(theta):
     R = numpy.matrix([[numpy.cos(theta),-numpy.sin(theta),0],
                      [numpy.sin(theta),numpy.cos(theta),0],
                      [0,0,1]])
-    
