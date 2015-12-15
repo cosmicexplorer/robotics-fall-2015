@@ -1,8 +1,14 @@
 #!/usr/bin/env python
 
 import rospy
+import cv2
+from cv_bridge import CvBridge, CvBridgeError
+from sensor_msgs.msg import Image
 import numpy
 from numpy import matrix
+from baxter_interface import CameraController
+from sensor_msgs.msg import Image
+import struct
 import sys
 import tf
 import math
@@ -16,6 +22,9 @@ from baxter_interface import Gripper
 from tf import transformations
 from std_msgs.msg import (
     Float64,
+)
+from sensor_msgs.msg import (
+    JointState
 )
 from baxter_core_msgs.msg import(
     JointCommand,
